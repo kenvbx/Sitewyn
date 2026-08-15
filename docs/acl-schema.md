@@ -121,3 +121,24 @@ Run the sample ACL seeder when development data is useful:
 ```bash
 php artisan db:seed --class=Sitewyn\\Core\\Base\\Database\\Seeders\\AclSampleSeeder
 ```
+
+## Super Admin Seed
+
+P1-03 adds `Sitewyn\Core\Base\Database\Seeders\SuperAdminSeeder` and wires it into the root `DatabaseSeeder`.
+
+Configure the first admin account through `.env`:
+
+```dotenv
+SITEWYN_ADMIN_NAME="Super Admin"
+SITEWYN_ADMIN_USERNAME=admin
+SITEWYN_ADMIN_EMAIL=admin@example.com
+SITEWYN_ADMIN_PASSWORD=password
+```
+
+Then run:
+
+```bash
+php artisan db:seed
+```
+
+The seeder is idempotent: it keeps one `super-admin` system role, one admin account per configured email, and attaches that role to the account.

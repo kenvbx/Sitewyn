@@ -1,5 +1,7 @@
 <?php
 
+use Sitewyn\Core\Base\Providers\BaseServiceProvider;
+
 return [
     'name' => 'Sitewyn Core Base',
     'modules' => [
@@ -10,7 +12,13 @@ return [
             'platform/themes',
         ],
         'excluded_providers' => [
-            Sitewyn\Core\Base\Providers\BaseServiceProvider::class,
+            BaseServiceProvider::class,
         ],
+    ],
+    'admin' => [
+        'name' => env('SITEWYN_ADMIN_NAME'),
+        'username' => env('SITEWYN_ADMIN_USERNAME'),
+        'email' => env('SITEWYN_ADMIN_EMAIL'),
+        'password' => env('SITEWYN_ADMIN_PASSWORD'),
     ],
 ];
