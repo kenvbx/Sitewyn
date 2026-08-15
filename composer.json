@@ -8,8 +8,39 @@
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.17",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "wikimedia/composer-merge-plugin": "^2.1"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "platform/core/*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "platform/packages/*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "platform/plugins/*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "platform/themes/*",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.5",
@@ -70,6 +101,19 @@
     "extra": {
         "laravel": {
             "dont-discover": []
+        },
+        "merge-plugin": {
+            "include": [
+                "platform/core/*/composer.json",
+                "platform/packages/*/composer.json",
+                "platform/plugins/*/composer.json",
+                "platform/themes/*/composer.json"
+            ],
+            "recurse": false,
+            "replace": false,
+            "merge-dev": true,
+            "merge-extra": true,
+            "merge-extra-deep": true
         }
     },
     "config": {
@@ -78,7 +122,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "wikimedia/composer-merge-plugin": true
         }
     },
     "minimum-stability": "stable",
