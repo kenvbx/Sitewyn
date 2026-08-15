@@ -1,0 +1,8 @@
+#!/bin/sh
+
+msg_file="$1"
+
+if grep -Eiq 'b[o]tble|c[o]dex' "$msg_file"; then
+    echo "Commit message contains a reserved reference. Please rewrite it." >&2
+    exit 1
+fi
