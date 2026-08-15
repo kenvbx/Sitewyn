@@ -13,6 +13,8 @@ Supported module roots:
 Each PHP module can provide its own `composer.json`. The root project includes
 matching module files through Composer's merge plugin.
 
+All module package names must use the `sitewyn/*` vendor prefix.
+
 Minimum module package shape:
 
 ```json

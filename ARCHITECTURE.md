@@ -98,6 +98,8 @@ for root layer placeholders.
 - Module namespaces should mirror their layer and module name.
 - Composer package names should use `sitewyn/*`.
 - Frontend package names should use `@sitewyn/*`.
+- The root application package name is `sitewyn/cms`.
+- Keep Laravel host classes under `App` unless they are CMS module code.
 
 Examples:
 
@@ -106,6 +108,8 @@ Examples:
 - `Sitewyn\Plugins\Blog`
 - `sitewyn/core-base`
 - `@sitewyn/core-base`
+
+See [docs/naming.md](docs/naming.md) for detailed naming rules.
 
 ## Admin UI
 
