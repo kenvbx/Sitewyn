@@ -1,0 +1,5 @@
+@import '@tabler/core/dist/css/tabler.min.css';
+
+:root {
+    --sitewyn-admin-sidebar-width: 16rem;
+}

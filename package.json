@@ -2,9 +2,18 @@
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
     "type": "module",
+    "workspaces": [
+        "platform/core/*",
+        "platform/packages/*",
+        "platform/plugins/*",
+        "platform/themes/*"
+    ],
     "scripts": {
         "build": "vite build",
         "dev": "vite"
+    },
+    "dependencies": {
+        "@tabler/core": "^1.4.0"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -15,5 +24,8 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@tabler/core": "^1.4.0"
     }
 }
