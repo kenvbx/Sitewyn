@@ -23,6 +23,7 @@ npm run build
 - Prioritize familiar CMS workflows first: posts, pages, media, taxonomy, menus, themes, widgets, users, roles, and settings.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the module layout and placement rules.
+See [docs/module-development.md](docs/module-development.md) for the module workflow.
 
 ## Commit Rules
 
