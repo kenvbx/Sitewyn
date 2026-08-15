@@ -2,6 +2,7 @@
 
 namespace Sitewyn\Core\Base\Providers;
 
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 use Sitewyn\Core\Base\Support\ModuleProviderRepository;
 
@@ -18,13 +19,14 @@ class BaseServiceProvider extends ServiceProvider
         $this->loadViewsFrom($this->modulePath('resources/views'), 'core/base');
         $this->loadRoutesFrom($this->modulePath('routes/web.php'));
         $this->loadMigrationsFrom($this->modulePath('database/migrations'));
+        $this->registerPasswordResetUrl();
     }
 
     private function modulePath(string $path = ''): string
     {
         $basePath = dirname(__DIR__, 2);
 
-        return $path === '' ? $basePath : $basePath . DIRECTORY_SEPARATOR . $path;
+        return $path === '' ? $basePath : $basePath.DIRECTORY_SEPARATOR.$path;
     }
 
     private function registerModuleProviders(): void
@@ -43,5 +45,13 @@ class BaseServiceProvider extends ServiceProvider
 
             $this->app->register($provider);
         }
+    }
+
+    private function registerPasswordResetUrl(): void
+    {
+        ResetPassword::createUrlUsing(fn (object $notifiable, string $token): string => route('admin.password.reset', [
+            'token' => $token,
+            'email' => $notifiable->getEmailForPasswordReset(),
+        ]));
     }
 }

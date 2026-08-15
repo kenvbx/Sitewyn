@@ -25,6 +25,9 @@
                 </a>
             </div>
             <h2 class="h3 text-center mb-3">Login to your account</h2>
+            @if (session('status'))
+                <div class="alert alert-success" role="alert">{{ session('status') }}</div>
+            @endif
             <form action="{{ route('admin.login.store') }}" method="post" autocomplete="off" novalidate>
                 @csrf
                 <div class="mb-3">
@@ -47,7 +50,7 @@
                     <label class="form-label" for="password">
                         Password
                         <span class="form-label-description">
-                            <a href="#">I forgot password</a>
+                            <a href="{{ route('admin.password.request') }}">I forgot password</a>
                         </span>
                     </label>
                     <div class="input-group input-group-flat">
