@@ -104,3 +104,20 @@ erDiagram
 - P1-02 creates Eloquent models and relationships for this schema.
 - P1-03 seeds the first Super Admin role and admin user.
 - P1-07 adds the permission registry so modules can declare permission keys.
+
+## Model Layer
+
+P1-02 maps this schema to Eloquent:
+
+- `App\Models\User`: owns `roles()` and `meta()` relationships.
+- `Sitewyn\Core\Base\Models\Role`: owns `users()` and `permissions()` relationships.
+- `Sitewyn\Core\Base\Models\Permission`: owns `roles()` relationship.
+- `Sitewyn\Core\Base\Models\UserMeta`: belongs to one user.
+
+Core base also provides factories for `Role`, `Permission`, and `UserMeta`.
+
+Run the sample ACL seeder when development data is useful:
+
+```bash
+php artisan db:seed --class=Sitewyn\\Core\\Base\\Database\\Seeders\\AclSampleSeeder
+```
