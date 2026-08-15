@@ -1,0 +1,19 @@
+{
+    "name": "sitewyn/core-base",
+    "version": "0.1.0",
+    "type": "library",
+    "description": "Foundation module for the Sitewyn CMS platform.",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sitewyn\\Core\\Base\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sitewyn\\Core\\Base\\Providers\\BaseServiceProvider"
+            ]
+        }
+    }
+}

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b38b1d7f966c73a6b4b8e2c2a8cccc6e",
+    "content-hash": "0798096b462d35846fe66e313f46d84e",
     "packages": [
         {
             "name": "brick/math",
@@ -3305,6 +3305,36 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.3"
             },
             "time": "2026-06-18T03:57:49+00:00"
+        },
+        {
+            "name": "sitewyn/core-base",
+            "version": "0.1.0",
+            "dist": {
+                "type": "path",
+                "url": "platform/core/base",
+                "reference": "bd9ab0e5b4bab0c12a4433e4db8d32773bfed1e9"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Sitewyn\\Core\\Base\\Providers\\BaseServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Sitewyn\\Core\\Base\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Foundation module for the Sitewyn CMS platform.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "symfony/clock",

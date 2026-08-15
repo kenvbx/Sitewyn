@@ -36,6 +36,9 @@ Minimum module package shape:
 }
 ```
 
+The first installed platform package is `sitewyn/core-base` at
+`platform/core/base`.
+
 After adding or changing module packages, run:
 
 ```bash
