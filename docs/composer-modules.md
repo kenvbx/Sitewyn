@@ -46,6 +46,15 @@ composer dump-autoload
 composer test
 ```
 
+New module skeletons can be generated with:
+
+```bash
+php artisan module:make plugin blog
+php artisan module:make package page
+php artisan module:make core acl
+php artisan module:make theme default
+```
+
 Path repositories use symlinks so local module edits are reflected immediately
 without publishing packages.
 
