@@ -142,3 +142,7 @@ php artisan db:seed
 ```
 
 The seeder is idempotent: it keeps one `super-admin` system role, one admin account per configured email, and attaches that role to the account.
+
+## Admin Login
+
+P1-04 adds the first admin login/logout flow. See `docs/admin-auth.md` for routes, guard behavior, and verification commands.
