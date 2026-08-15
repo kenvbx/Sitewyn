@@ -3,12 +3,14 @@
 namespace Sitewyn\Core\Base\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Sitewyn\Core\Base\Support\ModuleProviderRepository;
 
 class BaseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom($this->modulePath('config/sitewyn-base.php'), 'sitewyn-base');
+        $this->registerModuleProviders();
     }
 
     public function boot(): void
@@ -23,5 +25,23 @@ class BaseServiceProvider extends ServiceProvider
         $basePath = dirname(__DIR__, 2);
 
         return $path === '' ? $basePath : $basePath . DIRECTORY_SEPARATOR . $path;
+    }
+
+    private function registerModuleProviders(): void
+    {
+        $repository = new ModuleProviderRepository(base_path());
+        $excludedProviders = config('sitewyn-base.modules.excluded_providers', []);
+
+        foreach ($repository->providers(config('sitewyn-base.modules.provider_roots', [])) as $provider) {
+            if (in_array($provider, $excludedProviders, true)) {
+                continue;
+            }
+
+            if (isset($this->app->getLoadedProviders()[$provider])) {
+                continue;
+            }
+
+            $this->app->register($provider);
+        }
     }
 }

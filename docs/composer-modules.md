@@ -48,3 +48,7 @@ composer test
 
 Path repositories use symlinks so local module edits are reflected immediately
 without publishing packages.
+
+The core base module also scans platform module `composer.json` files for
+`extra.laravel.providers`, so provider registration stays colocated with each
+module package.
