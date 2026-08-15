@@ -22,6 +22,8 @@ npm run build
 - Keep admin UI consistent with Tabler.
 - Prioritize familiar CMS workflows first: posts, pages, media, taxonomy, menus, themes, widgets, users, roles, and settings.
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the module layout and placement rules.
+
 ## Commit Rules
 
 - Use short English commit messages in imperative style.
