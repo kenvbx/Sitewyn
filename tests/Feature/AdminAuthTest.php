@@ -42,7 +42,7 @@ class AdminAuthTest extends TestCase
 
         $this->get('/admin')
             ->assertOk()
-            ->assertSee('Dashboard')
+            ->assertSee('Combo layout')
             ->assertSee('admin@example.com');
 
         $this->post('/admin/logout')
