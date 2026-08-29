@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Sitewyn\Core\Base\Models\Concerns\HasPermissions;
 use Sitewyn\Core\Base\Models\Role;
 use Sitewyn\Core\Base\Models\UserMeta;
 
@@ -19,7 +20,7 @@ use Sitewyn\Core\Base\Models\UserMeta;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasPermissions, Notifiable;
 
     /**
      * Get the attributes that should be cast.

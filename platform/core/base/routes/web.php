@@ -4,6 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Sitewyn\Core\Base\Http\Controllers\Admin\AuthController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\DashboardController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SettingController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\UserController;
 
 Route::get('/_platform/core/base', static fn () => response()->json([
     'module' => 'core/base',
@@ -26,5 +30,54 @@ Route::prefix('admin')
         Route::middleware('auth:admin')->group(function (): void {
             Route::get('/', DashboardController::class)->name('dashboard');
             Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+            Route::get('roles', [RoleController::class, 'index'])
+                ->middleware('permission:roles.index')
+                ->name('roles.index');
+            Route::get('roles/create', [RoleController::class, 'create'])
+                ->middleware('permission:roles.create')
+                ->name('roles.create');
+            Route::post('roles', [RoleController::class, 'store'])
+                ->middleware('permission:roles.create')
+                ->name('roles.store');
+            Route::get('roles/{role}/edit', [RoleController::class, 'edit'])
+                ->middleware('permission:roles.edit')
+                ->name('roles.edit');
+            Route::put('roles/{role}', [RoleController::class, 'update'])
+                ->middleware('permission:roles.edit')
+                ->name('roles.update');
+            Route::delete('roles/{role}', [RoleController::class, 'destroy'])
+                ->middleware('permission:roles.delete')
+                ->name('roles.destroy');
+
+            Route::get('users', [UserController::class, 'index'])
+                ->middleware('permission:users.index')
+                ->name('users.index');
+            Route::get('users/create', [UserController::class, 'create'])
+                ->middleware('permission:users.create')
+                ->name('users.create');
+            Route::post('users', [UserController::class, 'store'])
+                ->middleware('permission:users.create')
+                ->name('users.store');
+            Route::get('users/{user}/edit', [UserController::class, 'edit'])
+                ->middleware('permission:users.edit')
+                ->name('users.edit');
+            Route::put('users/{user}', [UserController::class, 'update'])
+                ->middleware('permission:users.edit')
+                ->name('users.update');
+            Route::delete('users/{user}', [UserController::class, 'destroy'])
+                ->middleware('permission:users.delete')
+                ->name('users.destroy');
+
+            Route::get('permissions', [PermissionController::class, 'index'])
+                ->middleware('permission:permissions.index')
+                ->name('permissions.index');
+
+            Route::get('settings', [SettingController::class, 'edit'])
+                ->middleware('permission:settings.edit')
+                ->name('settings.edit');
+            Route::put('settings', [SettingController::class, 'update'])
+                ->middleware('permission:settings.edit')
+                ->name('settings.update');
         });
     });

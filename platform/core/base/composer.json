@@ -7,7 +7,10 @@
     "autoload": {
         "psr-4": {
             "Sitewyn\\Core\\Base\\": "src/"
-        }
+        },
+        "files": [
+            "src/Support/helpers.php"
+        ]
     },
     "extra": {
         "laravel": {

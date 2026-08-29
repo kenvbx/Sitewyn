@@ -146,3 +146,114 @@ The seeder is idempotent: it keeps one `super-admin` system role, one admin acco
 ## Admin Login
 
 P1-04 adds the first admin login/logout flow. See `docs/admin-auth.md` for routes, guard behavior, and verification commands.
+
+P1-05 adds permission helpers to `App\Models\User`:
+
+- `hasPermission('users.edit')`
+- `hasAnyPermission(['users.edit', 'roles.index'])`
+- `hasAllPermissions(['users.index', 'roles.index'])`
+- `permissionKeys()`
+
+`is_super_admin` bypasses all permission checks. The core base provider also
+bridges these helpers into Laravel Gate, so Blade `@can('users.index')` and
+controller `Gate::allows('users.index')` use the same role permission data.
+
+## Permission Middleware
+
+P1-06 registers the `permission` route middleware alias from the core base
+provider:
+
+```php
+Route::middleware(['auth:admin', 'permission:users.index'])->group(function () {
+    // Admin routes requiring users.index.
+});
+```
+
+The middleware checks the current admin guard user first, then falls back to the
+default request user. Requests without an authenticated user, without permission
+arguments, or without at least one matching permission are rejected with 403.
+Super admin users still pass through the same `hasAnyPermission()` helper and
+therefore keep the ACL bypass defined in P1-05.
+
+## Permission Registry
+
+P1-07 adds `Sitewyn\Core\Base\Support\PermissionRegistry` so each module can
+declare its own admin permission keys from its service provider:
+
+```php
+use Sitewyn\Core\Base\Support\PermissionRegistry;
+
+$this->app->make(PermissionRegistry::class)->register([
+    [
+        'key' => 'posts.index',
+        'name' => 'View posts',
+        'group' => 'posts',
+        'description' => 'View blog post list.',
+    ],
+], 'plugins/blog');
+```
+
+Core base registers the first MVP permission set:
+
+- `users.index`, `users.create`, `users.edit`, `users.delete`
+- `roles.index`, `roles.create`, `roles.edit`, `roles.delete`
+- `permissions.index`
+- `settings.edit`
+
+Feature packages register their own permission sets. The Media package registers:
+
+- `media.index`, `media.upload`, `media.edit`, `media.delete`
+
+Sync registered permissions into the database with:
+
+```bash
+php artisan permission:sync
+```
+
+The command is idempotent and updates existing rows by `key`, which keeps the
+database aligned with module declarations without hardcoding all permissions in
+one central seeder.
+
+## Role Administration
+
+P1-08 adds the first admin CRUD screens for roles:
+
+- `GET /admin/roles` lists roles with permission and user counts.
+- `GET /admin/roles/create` and `POST /admin/roles` create custom roles.
+- `GET /admin/roles/{role}/edit` and `PUT /admin/roles/{role}` update role
+  details and assigned permissions.
+- `DELETE /admin/roles/{role}` deletes custom roles only when no users are
+  assigned.
+
+All role routes use the admin guard and the `permission` middleware:
+`roles.index`, `roles.create`, `roles.edit`, and `roles.delete`. The controller
+syncs registered permissions before rendering or saving so permission checkboxes
+stay aligned with module declarations.
+
+## User Administration
+
+P1-09 adds admin CRUD screens for users:
+
+- `GET /admin/users` lists admin users with role badges, active/locked state,
+  super admin state, and last login time.
+- `GET /admin/users/create` and `POST /admin/users` create users with one or
+  more roles.
+- `GET /admin/users/{user}/edit` and `PUT /admin/users/{user}` update profile
+  details, roles, account status, super admin flag, and password.
+- `DELETE /admin/users/{user}` deletes another admin account and detaches its
+  role assignments.
+
+User routes use `users.index`, `users.create`, `users.edit`, and `users.delete`.
+Email and username are unique, update forms keep the current password when the
+password fields are blank, and an admin cannot lock or delete their own account.
+
+## Permission Administration
+
+P1-10 adds a read-only admin permission index at `GET /admin/permissions`.
+The page is protected by `permissions.index`, syncs registered permissions into
+the database before rendering, and groups rows by module so QA can inspect which
+module owns each key.
+
+The page intentionally does not allow create, edit, or delete actions. Permission
+definitions should continue to live in module service providers and be synced
+through the registry.

@@ -51,6 +51,187 @@ The views load Tabler through the module admin Vite entries:
 @vite(['platform/core/base/resources/css/admin.css', 'platform/core/base/resources/js/admin.js'])
 ```
 
+## Admin Layout
+
+P1-12 adds the shared admin layout at:
+
+```text
+platform/core/base/resources/views/admin/layouts/master.blade.php
+```
+
+CRUD-style admin pages should extend:
+
+```blade
+@extends('core/base::admin.layouts.master')
+```
+
+The master layout owns the Tabler sidebar, topbar, page header, breadcrumb
+region, flash messages, and content container. It exposes these sections:
+
+- `title`
+- `pretitle`
+- `page-title`
+- `breadcrumbs`
+- `page-actions`
+- `content`
+
+`core/base::admin.layouts.app` remains as a thin compatibility alias for pages
+created before P1-12. New pages should use `master` directly.
+
+## Admin Components
+
+P1-14 adds reusable Tabler Blade components for admin modules:
+
+- `<x-admin-card>`
+- `<x-admin-data-table>`
+- `<x-admin-form-group>`
+- `<x-admin-modal>`
+- `<x-admin-alert>`
+- `<x-admin-toast>`
+- `<x-admin-pagination>`
+
+Example:
+
+```blade
+<x-admin-card title="Role information">
+    <x-admin-form-group name="name" label="Name" :value="$role->name" required />
+
+    <x-slot:footer>
+        <div class="text-end">
+            <button type="submit" class="btn btn-primary">Save role</button>
+        </div>
+    </x-slot:footer>
+</x-admin-card>
+```
+
+The component views keep Tabler's native HTML classes (`card`,
+`table-responsive`, `form-control`, `modal`, `alert`, `toast`, and pagination
+wrappers), so module pages should prefer these components instead of hand
+rolling repeated admin markup.
+
+P1-15 extends `<x-admin-data-table>` with Tabler's `datatables.html` pattern,
+powered by `list.js` copied from the local Tabler source:
+
+```blade
+<x-admin-data-table
+    id="admin-posts-table"
+    title="Post list"
+    :value-names="['sort-title', 'sort-status', ['name' => 'sort-date', 'attr' => 'data-date']]"
+    searchable
+    paginated
+    :page="10"
+>
+    <x-slot:head>
+        <tr>
+            <th><button class="table-sort" data-sort="sort-title">Title</button></th>
+            <th><button class="table-sort" data-sort="sort-status">Status</button></th>
+            <th><button class="table-sort" data-sort="sort-date">Date</button></th>
+        </tr>
+    </x-slot:head>
+
+    <tr>
+        <td class="sort-title">About</td>
+        <td class="sort-status">Published</td>
+        <td class="sort-date" data-date="1723680000">2024-08-15</td>
+    </tr>
+</x-admin-data-table>
+```
+
+Current Users/Roles tables use client-side search, sort, and pagination for the
+MVP. Move high-volume resources to server-side mode later.
+
+P1-16 adds the `admin_flash()` helper for CRUD feedback:
+
+```php
+admin_flash()->success(__('User created successfully.'));
+admin_flash()->error(__('Cannot delete a role that has users.'));
+admin_flash()->warning(__('Please review the form.'));
+admin_flash()->info(__('Settings were already up to date.'));
+```
+
+The helper stores a normalized `admin_flash` payload and also keeps the legacy
+`status`/`error` session keys for compatibility. The master admin layout renders
+flash feedback as a Tabler toast using the local `x-admin-toast` component and
+the `toast-container position-fixed bottom-0 end-0 p-3` structure from Tabler's
+toast preview.
+
+P1-17 adds a shared validation pattern for admin forms. Server-side validation
+continues to live in Laravel FormRequest classes under:
+
+```text
+platform/core/base/src/Http/Requests/Admin
+```
+
+Client-side validation uses Tabler's Bootstrap markup: forms add
+`needs-validation`, `data-admin-validate`, and `novalidate`; fields use native
+HTML attributes rendered by `<x-admin-form-group>`.
+
+```blade
+<form method="POST" class="needs-validation" data-admin-validate novalidate>
+    <x-admin-form-group
+        name="slug"
+        label="Slug"
+        :maxlength="255"
+        pattern="[A-Za-z0-9_-]+"
+        invalid-feedback="Slug may only contain letters, numbers, dashes, and underscores."
+    />
+</form>
+```
+
+The master admin layout adds `was-validated` on submit and supports password
+confirmation style checks through `data-admin-confirm`.
+
+P1-19 adds minimal general settings:
+
+- `GET /admin/settings`
+- `PUT /admin/settings`
+- required permission: `settings.edit`
+
+Settings are stored as key-value rows in the `settings` table and read through
+`Sitewyn\Core\Base\Support\SettingStore`. Values are cached under
+`sitewyn.settings`; saving settings clears that cache and reapplies
+`config('app.name')` from `site_name`.
+
+```php
+site_setting('site_name', config('app.name'));
+site_setting('site_logo');
+```
+
+The first editable keys are `site_name` and `site_logo`. The admin form uses the
+same Tabler card/form-group validation pattern as Users and Roles.
+
+P1-20 adds focused access-control coverage for the admin area. The suite checks
+that guests are redirected to `/admin/login`, regular admins without route
+permissions receive 403 responses, admins with the required role permission can
+open protected pages, super admins bypass route permissions, and bad login
+passwords keep the admin guard unauthenticated.
+
+## Admin Menu
+
+P1-13 adds `Sitewyn\Core\Base\Support\AdminMenuRegistry` for dynamic sidebar
+items. Modules should register admin menu entries from their service provider:
+
+```php
+use Sitewyn\Core\Base\Support\AdminMenuRegistry;
+
+$this->app->make(AdminMenuRegistry::class)->register([
+    [
+        'id' => 'posts',
+        'title' => 'Posts',
+        'route' => 'admin.posts.index',
+        'permission' => 'posts.index',
+        'icon' => 'circle',
+        'active' => ['admin.posts.*'],
+        'order' => 40,
+    ],
+]);
+```
+
+Menu items support nested `children`, `permission`, `route`, `url`, `active`,
+`icon`, and `order`. The master layout renders only items visible to the current
+admin user, using the same permission helpers and super admin bypass as the rest
+of the ACL layer.
+
 ## Verification
 
 Run:

@@ -5,30 +5,19 @@ namespace Sitewyn\Core\Base\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Sitewyn\Core\Base\Models\Permission;
 use Sitewyn\Core\Base\Models\Role;
+use Sitewyn\Core\Base\Support\PermissionRegistry;
 
 class AclSampleSeeder extends Seeder
 {
     public function run(): void
     {
-        $permissions = collect([
-            [
-                'name' => 'View users',
-                'key' => 'users.index',
-                'module' => 'core/base',
-                'group' => 'users',
-                'description' => 'View admin user list.',
-            ],
-            [
-                'name' => 'View roles',
-                'key' => 'roles.index',
-                'module' => 'core/base',
-                'group' => 'roles',
-                'description' => 'View admin role list.',
-            ],
-        ])->map(fn (array $permission) => Permission::query()->updateOrCreate(
-            ['key' => $permission['key']],
-            $permission,
-        ));
+        $permissions = app(PermissionRegistry::class)
+            ->all()
+            ->whereIn('key', ['users.index', 'roles.index'])
+            ->map(fn (array $permission) => Permission::query()->updateOrCreate(
+                ['key' => $permission['key']],
+                $permission,
+            ));
 
         $role = Role::query()->updateOrCreate(
             ['slug' => 'content-manager'],

@@ -29,8 +29,13 @@ npm run build
 ```
 
 For admin UI work, also verify the screen visually and keep Tabler layout intact.
+Admin HTML/CSS/JS must be copied or ported from the local Tabler source at
+`/Volumes/WORKSPACE/PROJECT/HTML/tabler-dev`; do not hand-write a replacement
+layout when a matching Tabler page/component exists.
 
 ## Adding A Module
+
+Use the detailed checklist in `docs/module-development.md`. The short version:
 
 Create modules with the scaffold command:
 
