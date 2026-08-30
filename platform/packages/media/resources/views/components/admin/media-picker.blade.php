@@ -108,6 +108,8 @@
           })
         }
 
+        let editorPickerRequest = null
+
         function initPicker(root) {
           const endpoint = root.getAttribute('data-media-picker-endpoint')
           const modal = root.querySelector(root.getAttribute('data-media-picker-modal'))
@@ -189,6 +191,12 @@
                 thumbnail: fileButton.getAttribute('data-file-thumbnail'),
               }
               useButton.removeAttribute('disabled')
+
+              if (editorPickerRequest) {
+                editorPickerRequest.callback(selectedFile.url, { alt: selectedFile.name })
+                editorPickerRequest = null
+                window.tabler.bootstrap.Modal.getOrCreateInstance(modal).hide()
+              }
             }
           })
 
@@ -217,11 +225,32 @@
           modal.addEventListener('shown.bs.modal', function () {
             load(currentFolder, search.elements.q.value)
           })
+
+          modal.addEventListener('hidden.bs.modal', function () {
+            editorPickerRequest = null
+          })
         }
 
         function initMediaPickers() {
           document.querySelectorAll('[data-media-picker]').forEach(initPicker)
         }
+
+        document.addEventListener('admin:editor-file-picker', function (event) {
+          const detail = event.detail
+
+          if (! detail || typeof detail.callback !== 'function') return
+
+          const root = document.querySelector('[data-media-picker]')
+
+          if (! root) return
+
+          detail.handled = true
+          editorPickerRequest = detail
+
+          const modal = root.querySelector(root.getAttribute('data-media-picker-modal'))
+
+          window.tabler.bootstrap.Modal.getOrCreateInstance(modal).show()
+        })
 
         document.readyState !== 'loading' ? initMediaPickers() : document.addEventListener('DOMContentLoaded', initMediaPickers, { once: true })
       })()

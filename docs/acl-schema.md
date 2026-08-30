@@ -257,3 +257,38 @@ module owns each key.
 The page intentionally does not allow create, edit, or delete actions. Permission
 definitions should continue to live in module service providers and be synced
 through the registry.
+
+## Privilege Escalation Guards
+
+The users CRUD adds three guards so an admin holding only `users.edit` or
+`users.create` cannot escalate privileges for themselves or others. All checks
+live in `Sitewyn\Core\Base\Http\Controllers\Admin\UserController`.
+
+1. **No self-modification of privileges.** When an admin edits their own account
+   (`auth('admin')->id() === $user->id`), the `roles` and `is_super_admin` input
+   keys are stripped silently before persisting. Role assignments are not
+   re-synced and the super admin flag keeps its current value. Other fields
+   (name, username, email, password) remain editable, and `is_active` is still
+   forced to `true` for self-edits. This applies to every requester, including
+   super admins.
+
+2. **The super admin flag requires super admin.** When storing or updating any
+   other user with a truthy `is_super_admin` input, a requester who is not a
+   super admin receives a validation error:
+   `Only super admins can grant the super admin flag.` Super admins keep full
+   authority. The form only renders the Super Admin toggle for super admins, so
+   regular admins never see the control.
+
+3. **Role subset rule.** A non-super-admin requester may only assign roles whose
+   permission keys are a subset of the requester's own permission keys
+   (`permissionKeys()` from the `HasPermissions` trait). Assigning a role that
+   grants any permission the requester does not have fails with:
+   `You cannot assign a role with permissions you do not have.` A role with no
+   permissions is always assignable. Super admins bypass this check. The user
+   forms only list assignable roles: `UserController::assignableRoles()` filters
+   the role collection by the same subset rule before rendering.
+
+Escalation coverage lives in `tests/Feature/AdminUserEscalationTest.php`:
+self-edit stripping, super admin flag rules on store/update, role subset
+violations and allowed assignments, route permission gates, and form rendering
+for both requester types.

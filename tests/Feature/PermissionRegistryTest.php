@@ -29,8 +29,24 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('media.upload'));
         $this->assertTrue($registry->has('media.edit'));
         $this->assertTrue($registry->has('media.delete'));
-        $this->assertSame(14, $registry->all()->count());
-        $this->assertSame(['media', 'permissions', 'roles', 'settings', 'users'], $registry->grouped()->keys()->sort()->values()->all());
+        $this->assertTrue($registry->has('page.index'));
+        $this->assertTrue($registry->has('page.create'));
+        $this->assertTrue($registry->has('page.edit'));
+        $this->assertTrue($registry->has('page.delete'));
+        $this->assertTrue($registry->has('post.index'));
+        $this->assertTrue($registry->has('post.create'));
+        $this->assertTrue($registry->has('post.edit'));
+        $this->assertTrue($registry->has('post.delete'));
+        $this->assertTrue($registry->has('category.index'));
+        $this->assertTrue($registry->has('category.create'));
+        $this->assertTrue($registry->has('category.edit'));
+        $this->assertTrue($registry->has('category.delete'));
+        $this->assertTrue($registry->has('tag.index'));
+        $this->assertTrue($registry->has('tag.create'));
+        $this->assertTrue($registry->has('tag.edit'));
+        $this->assertTrue($registry->has('tag.delete'));
+        $this->assertSame(30, $registry->all()->count());
+        $this->assertSame(['category', 'media', 'page', 'permissions', 'post', 'roles', 'settings', 'tag', 'users'], $registry->grouped()->keys()->sort()->values()->all());
     }
 
     public function test_permission_sync_command_persists_registered_permissions(): void
@@ -44,10 +60,10 @@ class PermissionRegistryTest extends TestCase
         ]);
 
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 14 permissions.')
+            ->expectsOutputToContain('Synced 30 permissions.')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('permissions', 14);
+        $this->assertDatabaseCount('permissions', 30);
         $this->assertDatabaseHas('permissions', [
             'name' => 'View users',
             'key' => 'users.index',
@@ -69,6 +85,26 @@ class PermissionRegistryTest extends TestCase
             'key' => 'media.index',
             'module' => 'package/media',
             'group' => 'media',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'page.index',
+            'module' => 'package/page',
+            'group' => 'page',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'post.index',
+            'module' => 'package/blog',
+            'group' => 'post',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'category.index',
+            'module' => 'package/blog',
+            'group' => 'category',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'tag.index',
+            'module' => 'package/blog',
+            'group' => 'tag',
         ]);
     }
 }

@@ -10,7 +10,6 @@ return [
         'image/png',
         'image/gif',
         'image/webp',
-        'image/svg+xml',
         'application/pdf',
         'text/plain',
         'application/zip',

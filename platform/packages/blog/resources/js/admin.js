@@ -1,0 +1,1 @@
+window.Sitewyn = window.Sitewyn || {};

@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
+use Sitewyn\Packages\Media\Support\DnsResolver;
+use Sitewyn\Packages\Media\Support\PhpDnsResolver;
 use Sitewyn\Packages\Media\View\Components\Admin\MediaPicker;
 
 class MediaServiceProvider extends ServiceProvider
@@ -13,6 +15,7 @@ class MediaServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom($this->modulePath('config/media.php'), 'media');
+        $this->app->bind(DnsResolver::class, PhpDnsResolver::class);
     }
 
     public function boot(): void

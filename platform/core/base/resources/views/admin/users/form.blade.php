@@ -24,10 +24,12 @@
         <input type="hidden" name="is_active" value="1" />
         <div class="form-hint">You cannot lock your own account.</div>
       @endif
-      <label class="form-check form-switch mt-3">
-        <input class="form-check-input" type="checkbox" name="is_super_admin" value="1" @checked((bool) old('is_super_admin', $user->is_super_admin)) />
-        <span class="form-check-label">Super Admin</span>
-      </label>
+      @if (auth('admin')->user()->is_super_admin)
+        <label class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" name="is_super_admin" value="1" @checked((bool) old('is_super_admin', $user->is_super_admin)) />
+          <span class="form-check-label">Super Admin</span>
+        </label>
+      @endif
     </x-admin-card>
     <x-admin-card title="Roles">
       @error('roles')

@@ -368,7 +368,28 @@ continue safely:
 Put module-specific docs in the module folder when the module grows beyond the
 project-level roadmap.
 
-## 14. Final Checklist
+## 14. Shared Admin Rich Text Editor
+
+Use `<x-admin-editor name="content" label="Content" :height="480"
+placeholder="...">` for admin rich text fields instead of a bare textarea. It
+renders a hidden textarea with the `data-admin-editor` attributes; the admin
+JS entry lazy-loads TinyMCE and replaces the textarea on the client.
+
+Media and file picking is decoupled from the media package through a custom
+event contract on `document` (`admin:editor-file-picker`, with
+`detail = {callback, filetype, handled}`):
+
+- The editor dispatches the event when the user opens the file picker.
+- A listener that opens its own picker must set `detail.handled = true`
+  synchronously and later call `detail.callback(url, meta)`.
+- If no listener claims the event, the editor falls back to a URL prompt, so
+  the component keeps working without the media package.
+
+Core never imports the media package; the media picker component ships the
+matching listener. TinyMCE skins are served from `public/vendor/tinymce/skins`
+— copy them from `node_modules/tinymce/skins` after upgrading the npm package.
+
+## 15. Final Checklist
 
 Before closing the task:
 

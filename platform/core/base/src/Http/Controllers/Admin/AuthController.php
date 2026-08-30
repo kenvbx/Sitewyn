@@ -24,12 +24,16 @@ class AuthController extends Controller
 
     public function login(AdminLoginRequest $request): RedirectResponse
     {
+        $request->ensureIsNotRateLimited();
+
         $credentials = $request->validated();
 
         /** @var User|null $user */
         $user = User::query()->where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            $request->hitRateLimit();
+
             throw ValidationException::withMessages([
                 'email' => __('These credentials do not match our records.'),
             ]);
@@ -42,6 +46,8 @@ class AuthController extends Controller
         }
 
         Auth::guard('admin')->login($user, (bool) ($credentials['remember'] ?? false));
+
+        $request->clearRateLimit();
 
         $request->session()->regenerate();
 

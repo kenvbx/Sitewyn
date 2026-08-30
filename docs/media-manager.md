@@ -363,3 +363,70 @@ DELETE /admin/media/folders/{folder} media.delete
 
 Run `php artisan permission:sync` after deploying module permission changes so
 the database roles can assign the new Media permissions.
+
+## Security
+
+### Upload from URL (SSRF)
+
+`POST /admin/media/upload` with `upload_url`/`upload_urls` is protected against
+SSRF by `Sitewyn\Packages\Media\Support\RemoteUrlGuard`. Before any request is
+sent (and again for every redirect hop), the guard rejects:
+
+- URLs whose scheme is not `http`/`https` (e.g. `file://`, `ftp://`).
+- Hosts that cannot be resolved via DNS (fail closed).
+- Hosts resolving into forbidden ranges: `127.0.0.0/8`, `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` (cloud metadata service),
+  `0.0.0.0/8`, `100.64.0.0/10`, `::1`, `fc00::/7`, `fe80::/10`. IPv4-mapped
+  IPv6 literals (`::ffff:10.0.0.5`) are normalized and checked against the
+  IPv4 list too.
+
+Redirects are followed manually (Guzzle `allow_redirects => false`), at most 5
+hops, so each hop can be validated before it is fetched. A redirect to a
+forbidden host fails the upload with 422 `The URL points to a forbidden host.`
+instead of leaking the request.
+
+Bodies are streamed to a temp file in 64 KB chunks and the download aborts as
+soon as `media.max_upload_size` is exceeded, so an oversized remote file is
+never fully buffered in memory.
+
+### File type hardening (stored XSS)
+
+- `image/svg+xml` is intentionally NOT in `media.allowed_mime_types`: SVG can
+  embed scripts that execute same-origin when served back to admins. If SVG
+  support is needed later, integrate a sanitizer (e.g. `enshrined/svg-sanitize`)
+  before re-enabling it.
+- An extension denylist in `UploadMediaRequest::fileRules()` rejects
+  client-supplied extensions such as `html`, `htm`, `xhtml`, `shtml`, `svg`,
+  `svgz`, `php`, `phtml`, `php3`–`php8`, `asp`, `aspx`, `jsp`, `js`, `mjs`,
+  `exe`, `dll`, `sh`, `bat`, `cmd`, `ps1`, `vbs`, `cgi`, `pl`, `py` — even when
+  the detected mime type is allowed (e.g. `text/plain` disguised as `.html`).
+  The rule applies to multipart uploads and URL downloads alike, because both
+  paths validate through `fileRules()`.
+
+### Serving stored files
+
+Stored files are served from `/storage` (or the configured disk). The
+application does not set serving headers; the web server in front of
+`/storage` should enforce:
+
+```nginx
+location /storage {
+    add_header X-Content-Type-Options nosniff always;
+    # Force download for types browsers may execute:
+    add_header Content-Disposition "attachment" always;
+    try_files $uri =404;
+}
+```
+
+At minimum set `X-Content-Type-Options: nosniff` for `/storage` and keep the
+denylist above in place so executable formats are never stored.
+
+## Editor Bridge
+
+The admin media picker also listens for the `admin:editor-file-picker` event
+documented by the core `x-admin-editor` component. When the editor opens its
+image or file picker, the first `[data-media-picker]` instance on the page is
+opened in a modal: the listener marks `detail.handled = true` synchronously,
+and choosing a file calls `detail.callback(url, { alt: name })` before closing
+the modal. The standalone picker inputs, preview, and permissions are
+unchanged — the bridge never writes to the hidden inputs of the form picker.

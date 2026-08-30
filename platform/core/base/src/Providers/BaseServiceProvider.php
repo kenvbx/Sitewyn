@@ -16,6 +16,7 @@ use Sitewyn\Core\Base\Support\SettingStore;
 use Sitewyn\Core\Base\View\Components\Admin\Alert;
 use Sitewyn\Core\Base\View\Components\Admin\Card;
 use Sitewyn\Core\Base\View\Components\Admin\DataTable;
+use Sitewyn\Core\Base\View\Components\Admin\Editor;
 use Sitewyn\Core\Base\View\Components\Admin\FormGroup;
 use Sitewyn\Core\Base\View\Components\Admin\Modal;
 use Sitewyn\Core\Base\View\Components\Admin\Pagination;
@@ -86,6 +87,7 @@ class BaseServiceProvider extends ServiceProvider
         Blade::component(Card::class, 'admin-card');
         Blade::component(DataTable::class, 'admin-data-table');
         Blade::component(FormGroup::class, 'admin-form-group');
+        Blade::component(Editor::class, 'admin-editor');
         Blade::component(Modal::class, 'admin-modal');
         Blade::component(Alert::class, 'admin-alert');
         Blade::component(Toast::class, 'admin-toast');

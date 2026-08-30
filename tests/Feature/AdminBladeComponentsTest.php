@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Sitewyn\Core\Base\View\Components\Admin\Editor;
 use Tests\TestCase;
 
 class AdminBladeComponentsTest extends TestCase
@@ -97,5 +98,36 @@ class AdminBladeComponentsTest extends TestCase
         $this->assertStringContainsString('alert alert-success', $html);
         $this->assertStringContainsString('modal modal-blur fade', $html);
         $this->assertStringContainsString('toast show', $html);
+    }
+
+    public function test_admin_editor_component_renders_tinymce_textarea(): void
+    {
+        $html = Blade::render(
+            <<<'BLADE'
+            <x-admin-editor name="content" label="Content" value="Draft body" :height="480" placeholder="Tell the story..." hint="Markdown is not supported." />
+            BLADE,
+            [],
+            deleteCachedView: true,
+        );
+
+        $this->assertStringContainsString('id="content"', $html);
+        $this->assertStringContainsString('name="content"', $html);
+        $this->assertStringContainsString('data-admin-editor', $html);
+        $this->assertStringContainsString('data-admin-editor-height="480"', $html);
+        $this->assertStringContainsString('data-admin-editor-placeholder="Tell the story..."', $html);
+        $this->assertStringContainsString('Draft body', $html);
+        $this->assertStringContainsString('form-label', $html);
+        $this->assertStringContainsString('form-hint', $html);
+    }
+
+    public function test_admin_editor_component_is_registered_through_admin_editor_alias(): void
+    {
+        $this->assertSame(Editor::class, Blade::getClassComponentAliases()['admin-editor']);
+
+        $html = Blade::render('<x-admin-editor name="excerpt" value="Short summary" />', [], deleteCachedView: true);
+
+        $this->assertStringContainsString('id="excerpt"', $html);
+        $this->assertStringContainsString('data-admin-editor', $html);
+        $this->assertStringContainsString('Short summary', $html);
     }
 }

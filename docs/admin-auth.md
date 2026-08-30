@@ -15,6 +15,27 @@ P1-04 adds the first admin authentication flow.
 
 All admin auth routes are loaded from `platform/core/base/routes/web.php` and use the `web` middleware group for sessions, CSRF, old input, and validation errors.
 
+## Auth Rate Limiting
+
+Admin auth endpoints are protected by Laravel `RateLimiter` counters applied in
+the controllers/requests (no `throttle` middleware, so users get the friendly
+redirect-back validation error instead of a raw 429 page):
+
+- `POST /admin/login`: max 5 failed attempts per `sha1(email|ip)` per 60 seconds.
+  The check runs in `AdminLoginRequest::ensureIsNotRateLimited()` before
+  authenticating, failed passwords call `hitRateLimit()`, and a successful login
+  calls `clearRateLimit()`. A correct password is still rejected while the pair
+  is locked out. The message is
+  `Too many login attempts. Please try again in :seconds seconds.`
+- `POST /admin/forgot-password`: max 5 requests per `sha1(email|ip)` per 60
+  seconds; every request (successful or not) counts, which caps mail bombing per
+  mailbox. `GET /admin/forgot-password` is not throttled.
+- `POST /admin/reset-password`: max 10 attempts per `sha1(ip)` per 60 seconds to
+  slow token brute force. `GET /admin/reset-password/{token}` is not throttled.
+
+Counters live in the default cache store; use a durable store (redis, database)
+in production so they survive worker restarts.
+
 ## Guard
 
 The admin area uses the `admin` session guard from `config/auth.php`.

@@ -20,10 +20,14 @@ class AdminMenuRegistryTest extends TestCase
 
         $this->assertTrue($registry->has('dashboard'));
         $this->assertTrue($registry->has('access-control'));
+        $this->assertTrue($registry->has('pages'));
+        $this->assertTrue($registry->has('posts'));
+        $this->assertTrue($registry->has('categories'));
+        $this->assertTrue($registry->has('tags'));
         $this->assertTrue($registry->has('media'));
         $this->assertTrue($registry->has('settings'));
-        $this->assertSame(['dashboard', 'access-control', 'media', 'settings'], $registry->all()->pluck('id')->all());
-        $this->assertSame(['users', 'roles', 'permissions'], collect($registry->all()[1]['children'])->pluck('id')->all());
+        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'media', 'settings'], $registry->all()->pluck('id')->all());
+        $this->assertSame(['users', 'roles', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
     }
 
     public function test_sidebar_hides_menu_items_without_permission(): void

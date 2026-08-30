@@ -1,5 +1,8 @@
 {
     "name": "@sitewyn/core-base",
     "private": true,
-    "type": "module"
+    "type": "module",
+    "dependencies": {
+        "tinymce": "^6.8.6"
+    }
 }

@@ -2,6 +2,9 @@
 
 namespace Sitewyn\Packages\Media\Http\Controllers\Admin;
 
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
@@ -9,19 +12,27 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Sitewyn\Packages\Media\Http\Requests\Admin\UploadMediaRequest;
 use Sitewyn\Packages\Media\Models\MediaFile;
 use Sitewyn\Packages\Media\Repositories\MediaFileRepository;
 use Sitewyn\Packages\Media\Support\ImageConversionGenerator;
 use Sitewyn\Packages\Media\Support\MediaStorage;
+use Sitewyn\Packages\Media\Support\RemoteUrlGuard;
+use Sitewyn\Packages\Media\Support\UnsafeUrlException;
 use Symfony\Component\Mime\MimeTypes;
 
 class MediaUploadController extends Controller
 {
+    private const MAX_REDIRECTS = 5;
+
+    private const STREAM_CHUNK_SIZE = 65536;
+
     public function __construct(
         private readonly MediaFileRepository $files,
         private readonly ImageConversionGenerator $conversions,
         private readonly MediaStorage $storage,
+        private readonly RemoteUrlGuard $urlGuard,
     ) {}
 
     public function __invoke(UploadMediaRequest $request): JsonResponse
@@ -69,28 +80,7 @@ class MediaUploadController extends Controller
             ]);
         }
 
-        $response = Http::timeout(15)->accept('*/*')->get($url);
-
-        if (! $response->successful() || $response->body() === '') {
-            throw ValidationException::withMessages([
-                'upload_urls' => __('Line :line could not be downloaded.', ['line' => $position]),
-            ]);
-        }
-
-        $body = $response->body();
         $maxBytes = (int) config('media.max_upload_size', 10240) * 1024;
-
-        if (strlen($body) > $maxBytes) {
-            throw ValidationException::withMessages([
-                'upload_urls' => __('Line :line may not be greater than :max kilobytes.', [
-                    'line' => $position,
-                    'max' => (int) config('media.max_upload_size', 10240),
-                ]),
-            ]);
-        }
-
-        $mimeType = (string) Str::of((string) $response->header('Content-Type'))->before(';')->trim();
-        $mimeType = $mimeType !== '' ? $mimeType : null;
         $temporaryPath = tempnam(storage_path('app'), 'media-url-');
 
         if ($temporaryPath === false) {
@@ -99,10 +89,23 @@ class MediaUploadController extends Controller
             ]);
         }
 
-        file_put_contents($temporaryPath, $body);
         $temporaryPaths[] = $temporaryPath;
 
-        $uploadedFile = new UploadedFile($temporaryPath, $this->filenameFromUrl($url, $mimeType), $mimeType, null, true);
+        try {
+            [$mimeType, $finalUrl] = $this->downloadToTempFile($url, $temporaryPath, $maxBytes, $position);
+        } catch (UnsafeUrlException) {
+            throw ValidationException::withMessages([
+                'upload_urls' => __('The URL points to a forbidden host.'),
+            ]);
+        }
+
+        if ($mimeType === null) {
+            throw ValidationException::withMessages([
+                'upload_urls' => __('Line :line could not be downloaded.', ['line' => $position]),
+            ]);
+        }
+
+        $uploadedFile = new UploadedFile($temporaryPath, $this->filenameFromUrl($finalUrl, $mimeType), $mimeType, null, true);
 
         $validator = Validator::make(['file' => $uploadedFile], [
             'file' => $request->fileRules(),
@@ -115,6 +118,135 @@ class MediaUploadController extends Controller
         }
 
         return $uploadedFile;
+    }
+
+    /**
+     * Download the URL into the given temp file, streaming the body instead of
+     * buffering it, and re-validating every redirect hop against the URL guard.
+     *
+     * @return array{0: string|null, 1: string} The mime type (null when the
+     *                                          download failed) and the final URL after redirects.
+     *
+     * @throws UnsafeUrlException
+     * @throws ValidationException
+     */
+    private function downloadToTempFile(string $url, string $temporaryPath, int $maxBytes, int $position): array
+    {
+        $currentUrl = $url;
+        $redirects = 0;
+
+        while (true) {
+            $this->urlGuard->assertSafe($currentUrl);
+
+            $response = Http::timeout(15)
+                ->accept('*/*')
+                ->withOptions(['allow_redirects' => false, 'stream' => true])
+                ->get($currentUrl);
+
+            if ($response->redirect()) {
+                if ($redirects >= self::MAX_REDIRECTS) {
+                    throw ValidationException::withMessages([
+                        'upload_urls' => __('Line :line has too many redirects.', ['line' => $position]),
+                    ]);
+                }
+
+                $location = $response->header('Location');
+
+                if ($location === '') {
+                    return [null, $currentUrl];
+                }
+
+                $currentUrl = $this->absoluteUrl($currentUrl, $location);
+                $redirects++;
+
+                continue;
+            }
+
+            if (! $response->successful()) {
+                return [null, $currentUrl];
+            }
+
+            return [$this->streamBody($response, $temporaryPath, $maxBytes, $position), $currentUrl];
+        }
+    }
+
+    /**
+     * Stream the response body to the temp file in chunks, aborting as soon as
+     * the size limit is exceeded so oversized bodies never fully hit the RAM.
+     *
+     * @return string|null The response mime type, null when the body was empty.
+     *
+     * @throws ValidationException
+     */
+    private function streamBody(Response $response, string $temporaryPath, int $maxBytes, int $position): ?string
+    {
+        $mimeType = (string) Str::of((string) $response->header('Content-Type'))->before(';')->trim();
+        $handle = fopen($temporaryPath, 'wb');
+
+        if ($handle === false) {
+            throw ValidationException::withMessages([
+                'upload_urls' => __('Line :line could not be prepared for upload.', ['line' => $position]),
+            ]);
+        }
+
+        $bytes = 0;
+
+        try {
+            $body = $response->toPsrResponse()->getBody();
+
+            while (! $body->eof()) {
+                $chunk = $body->read(self::STREAM_CHUNK_SIZE);
+
+                if ($chunk === '') {
+                    break;
+                }
+
+                $bytes += strlen($chunk);
+
+                if ($bytes > $maxBytes) {
+                    throw ValidationException::withMessages([
+                        'upload_urls' => __('Line :line may not be greater than :max kilobytes.', [
+                            'line' => $position,
+                            'max' => (int) config('media.max_upload_size', 10240),
+                        ]),
+                    ]);
+                }
+
+                if (fwrite($handle, $chunk) === false) {
+                    throw ValidationException::withMessages([
+                        'upload_urls' => __('Line :line could not be prepared for upload.', ['line' => $position]),
+                    ]);
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        if ($bytes === 0) {
+            throw ValidationException::withMessages([
+                'upload_urls' => __('Line :line could not be downloaded.', ['line' => $position]),
+            ]);
+        }
+
+        return $mimeType !== '' ? $mimeType : null;
+    }
+
+    /**
+     * Resolve a Location header against the URL it was received from.
+     *
+     * @throws UnsafeUrlException
+     */
+    private function absoluteUrl(string $base, string $location): string
+    {
+        if (parse_url($location, PHP_URL_SCHEME) !== null) {
+            return $location;
+        }
+
+        try {
+            return (string) UriResolver::resolve(new Uri($base), new Uri($location));
+        } catch (InvalidArgumentException) {
+            throw new UnsafeUrlException('The redirect target is not a valid URL.');
+        }
     }
 
     private function filenameFromUrl(string $url, ?string $mimeType): string
