@@ -1,0 +1,13 @@
+{
+    "name": "Pages",
+    "slug": "page",
+    "version": "1.0.0",
+    "description": "Static pages with slug routing, SEO fields and admin CRUD.",
+    "provider": "Sitewyn\\Packages\\Page\\Providers\\PageServiceProvider",
+    "autoload": {
+        "psr-4": {
+            "Sitewyn\\Packages\\Page\\": "src/"
+        }
+    },
+    "requires": []
+}

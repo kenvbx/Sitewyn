@@ -12,6 +12,13 @@ and the schema migrations (`categories`, `posts`, `tags`, `post_tag`) landed in
 P3-04; P3-07 adds the admin post layer and P3-08 adds standalone Category and
 Tag management screens on top.
 
+> **Plugin Manager (P4-08):** the blog package now ships a `plugin.json`
+> manifest (slug `blog`) and is a standard, manageable plugin — see
+> `docs/plugin-development.md`. Deactivation via `/admin/plugins` or
+> `plugin:deactivate blog` removes its routes/menu from the running app while
+> keeping every row in `posts`/`categories`/`tags`; re-activation restores the
+> module with its data intact.
+
 ## Schema
 
 The `posts` table stores blog posts. On top of the P3-04 columns, P3-07 adds:

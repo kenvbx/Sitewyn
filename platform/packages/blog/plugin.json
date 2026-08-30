@@ -1,0 +1,13 @@
+{
+    "name": "Blog",
+    "slug": "blog",
+    "version": "1.0.0",
+    "description": "Posts with categories, tags, slug routing, SEO fields and admin CRUD.",
+    "provider": "Sitewyn\\Packages\\Blog\\Providers\\BlogServiceProvider",
+    "autoload": {
+        "psr-4": {
+            "Sitewyn\\Packages\\Blog\\": "src/"
+        }
+    },
+    "requires": []
+}

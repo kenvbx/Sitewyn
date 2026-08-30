@@ -25,6 +25,7 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('roles.delete'));
         $this->assertTrue($registry->has('permissions.index'));
         $this->assertTrue($registry->has('settings.edit'));
+        $this->assertTrue($registry->has('plugins.manage'));
         $this->assertTrue($registry->has('media.index'));
         $this->assertTrue($registry->has('media.upload'));
         $this->assertTrue($registry->has('media.edit'));
@@ -45,8 +46,8 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('tag.create'));
         $this->assertTrue($registry->has('tag.edit'));
         $this->assertTrue($registry->has('tag.delete'));
-        $this->assertSame(30, $registry->all()->count());
-        $this->assertSame(['category', 'media', 'page', 'permissions', 'post', 'roles', 'settings', 'tag', 'users'], $registry->grouped()->keys()->sort()->values()->all());
+        $this->assertSame(31, $registry->all()->count());
+        $this->assertSame(['category', 'media', 'page', 'permissions', 'plugins', 'post', 'roles', 'settings', 'tag', 'users'], $registry->grouped()->keys()->sort()->values()->all());
     }
 
     public function test_permission_sync_command_persists_registered_permissions(): void
@@ -60,10 +61,10 @@ class PermissionRegistryTest extends TestCase
         ]);
 
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 30 permissions.')
+            ->expectsOutputToContain('Synced 31 permissions.')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('permissions', 30);
+        $this->assertDatabaseCount('permissions', 31);
         $this->assertDatabaseHas('permissions', [
             'name' => 'View users',
             'key' => 'users.index',
@@ -80,6 +81,11 @@ class PermissionRegistryTest extends TestCase
             'key' => 'settings.edit',
             'module' => 'core/base',
             'group' => 'settings',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'plugins.manage',
+            'module' => 'core/base',
+            'group' => 'plugins',
         ]);
         $this->assertDatabaseHas('permissions', [
             'key' => 'media.index',

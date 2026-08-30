@@ -5,6 +5,7 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\AuthController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\DashboardController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\PluginManageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SettingController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\UserController;
@@ -79,5 +80,15 @@ Route::prefix('admin')
             Route::put('settings', [SettingController::class, 'update'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.update');
+
+            Route::get('plugins', [PluginManageController::class, 'index'])
+                ->middleware('permission:plugins.manage')
+                ->name('plugins.index');
+            Route::post('plugins/{slug}/activate', [PluginManageController::class, 'activate'])
+                ->middleware('permission:plugins.manage')
+                ->name('plugins.activate');
+            Route::post('plugins/{slug}/deactivate', [PluginManageController::class, 'deactivate'])
+                ->middleware('permission:plugins.manage')
+                ->name('plugins.deactivate');
         });
     });

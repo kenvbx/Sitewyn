@@ -25,8 +25,9 @@ class AdminMenuRegistryTest extends TestCase
         $this->assertTrue($registry->has('categories'));
         $this->assertTrue($registry->has('tags'));
         $this->assertTrue($registry->has('media'));
+        $this->assertTrue($registry->has('plugins'));
         $this->assertTrue($registry->has('settings'));
-        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'media', 'settings'], $registry->all()->pluck('id')->all());
+        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'media', 'plugins', 'settings'], $registry->all()->pluck('id')->all());
         $this->assertSame(['users', 'roles', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
     }
 

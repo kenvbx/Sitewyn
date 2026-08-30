@@ -9,6 +9,13 @@ platform/packages/page
 The package is registered through its own `composer.json` provider metadata and
 is discovered by the core base module provider scanner.
 
+> **Plugin Manager (P4-08):** the page package now ships a `plugin.json`
+> manifest (slug `page`) and is a standard, manageable plugin — see
+> `docs/plugin-development.md`. Deactivation via `/admin/plugins` or
+> `plugin:deactivate page` removes its routes/menu from the running app while
+> keeping every row in `pages`; re-activation restores the module with its
+> data intact.
+
 ## Schema
 
 The `pages` table (P3-04 migration) stores static pages:

@@ -1,0 +1,7 @@
+{
+    "name": "Demo Dependant",
+    "slug": "demo-dependant",
+    "version": "1.0.0",
+    "description": "Sample plugin fixture that requires demo-plugin; ships no provider or migrations.",
+    "requires": ["demo-plugin"]
+}

@@ -1,0 +1,13 @@
+{
+    "name": "Demo Plugin",
+    "slug": "demo-plugin",
+    "version": "1.0.0",
+    "description": "Sample plugin fixture demonstrating the plugin lifecycle (provider, routes, migrations).",
+    "provider": "Sitewyn\\Plugins\\DemoPlugin\\Providers\\DemoPluginServiceProvider",
+    "autoload": {
+        "psr-4": {
+            "Sitewyn\\Plugins\\DemoPlugin\\": "src/"
+        }
+    },
+    "requires": []
+}

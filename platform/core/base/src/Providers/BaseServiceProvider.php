@@ -6,12 +6,17 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Sitewyn\Core\Base\Console\Commands\PluginActivateCommand;
+use Sitewyn\Core\Base\Console\Commands\PluginDeactivateCommand;
+use Sitewyn\Core\Base\Console\Commands\PluginListCommand;
 use Sitewyn\Core\Base\Console\Commands\SyncPermissionsCommand;
 use Sitewyn\Core\Base\Http\Middleware\CheckPermission;
 use Sitewyn\Core\Base\Support\AdminFlash;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
 use Sitewyn\Core\Base\Support\ModuleProviderRepository;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
+use Sitewyn\Core\Base\Support\PluginActivator;
+use Sitewyn\Core\Base\Support\PluginManager;
 use Sitewyn\Core\Base\Support\SettingStore;
 use Sitewyn\Core\Base\View\Components\Admin\Alert;
 use Sitewyn\Core\Base\View\Components\Admin\Card;
@@ -30,6 +35,8 @@ class BaseServiceProvider extends ServiceProvider
         $this->app->singleton(AdminFlash::class);
         $this->app->singleton(AdminMenuRegistry::class);
         $this->app->singleton(PermissionRegistry::class);
+        $this->app->singleton(PluginActivator::class);
+        $this->app->singleton(PluginManager::class);
         $this->app->singleton(SettingStore::class);
         $this->registerModuleProviders();
     }
@@ -59,9 +66,19 @@ class BaseServiceProvider extends ServiceProvider
     private function registerModuleProviders(): void
     {
         $repository = new ModuleProviderRepository(base_path());
+        $pluginManager = $this->app->make(PluginManager::class);
         $excludedProviders = config('sitewyn-base.modules.excluded_providers', []);
 
-        foreach ($repository->providers(config('sitewyn-base.modules.provider_roots', [])) as $provider) {
+        foreach ($repository->providerEntries(config('sitewyn-base.modules.provider_roots', [])) as $entry) {
+            // Modules shipping a plugin.json manifest are gated on the
+            // plugin's active state; manifest-less modules keep registering
+            // unconditionally (no row in the plugins table counts as active).
+            if ($entry['slug'] !== null && ! $pluginManager->isActive($entry['slug'])) {
+                continue;
+            }
+
+            $provider = $entry['provider'];
+
             if (in_array($provider, $excludedProviders, true)) {
                 continue;
             }
@@ -173,6 +190,12 @@ class BaseServiceProvider extends ServiceProvider
                 'group' => 'settings',
                 'description' => 'Edit general site settings.',
             ],
+            [
+                'key' => 'plugins.manage',
+                'name' => 'Manage plugins',
+                'group' => 'plugins',
+                'description' => 'Activate and deactivate plugins.',
+            ],
         ], 'core/base');
     }
 
@@ -184,6 +207,9 @@ class BaseServiceProvider extends ServiceProvider
 
         $this->commands([
             SyncPermissionsCommand::class,
+            PluginListCommand::class,
+            PluginActivateCommand::class,
+            PluginDeactivateCommand::class,
         ]);
     }
 
@@ -230,6 +256,15 @@ class BaseServiceProvider extends ServiceProvider
                         'order' => 30,
                     ],
                 ],
+            ],
+            [
+                'id' => 'plugins',
+                'title' => 'Plugins',
+                'route' => 'admin.plugins.index',
+                'permission' => 'plugins.manage',
+                'icon' => 'plugin',
+                'active' => ['admin.plugins.*'],
+                'order' => 85,
             ],
             [
                 'id' => 'settings',
