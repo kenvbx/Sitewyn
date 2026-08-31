@@ -346,14 +346,6 @@ class BaseServiceProvider extends ServiceProvider
                 'order' => 87,
             ],
             [
-                'id' => 'platform',
-                'title' => 'Platform Administration',
-                'route' => 'admin.platform',
-                'icon' => 'shield',
-                'active' => ['admin.platform'],
-                'order' => 89,
-            ],
-            [
                 'id' => 'settings',
                 'title' => 'Settings',
                 'route' => 'admin.settings.edit',
@@ -361,6 +353,14 @@ class BaseServiceProvider extends ServiceProvider
                 'icon' => 'settings',
                 'active' => ['admin.settings.*'],
                 'order' => 90,
+            ],
+            [
+                'id' => 'system',
+                'title' => 'Platform Administration',
+                'route' => 'admin.system',
+                'icon' => 'shield',
+                'active' => ['admin.system'],
+                'order' => 99,
             ],
         ]);
     }

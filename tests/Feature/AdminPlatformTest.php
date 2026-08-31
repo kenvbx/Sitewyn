@@ -14,21 +14,21 @@ class AdminPlatformTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_platform_route_is_registered(): void
+    public function test_system_route_is_registered(): void
     {
-        $this->assertTrue(Route::has('admin.platform'));
-        $this->assertSame('/admin/platform', route('admin.platform', [], false));
+        $this->assertTrue(Route::has('admin.system'));
+        $this->assertSame('/admin/system', route('admin.system', [], false));
     }
 
-    public function test_guest_is_redirected_from_the_platform_hub(): void
+    public function test_guest_is_redirected_from_the_system_hub(): void
     {
-        $this->get('/admin/platform')->assertRedirect('/admin/login');
+        $this->get('/admin/system')->assertRedirect('/admin/login');
     }
 
     public function test_super_admin_sees_all_ten_tool_cards(): void
     {
         $content = $this->actingAs($this->adminUser(), 'admin')
-            ->get('/admin/platform')
+            ->get('/admin/system')
             ->assertOk()
             ->getContent();
 
@@ -50,37 +50,57 @@ class AdminPlatformTest extends TestCase
         $this->assertSame(10, substr_count($content, 'data-platform-card="'));
     }
 
-    public function test_user_with_users_index_only_sees_the_users_card(): void
+    /**
+     * Team gating: the Users card no longer follows the users.index
+     * permission — it only shows to team members, and a users.index-only
+     * admin is not one, so they see the empty state instead.
+     */
+    public function test_user_with_users_index_does_not_see_the_users_card(): void
     {
-        $content = $this->actingAs($this->userWithPermissions(['users.index']), 'admin')
-            ->get('/admin/platform')
+        $this->actingAs($this->userWithPermissions(['users.index']), 'admin')
+            ->get('/admin/system')
+            ->assertOk()
+            ->assertSee('No administration tools available for your account.')
+            ->assertDontSee('View and update your system users.')
+            ->assertDontSee('data-platform-card="', false);
+    }
+
+    public function test_user_with_the_admin_role_sees_the_users_card(): void
+    {
+        $user = $this->plainAdmin();
+        $user->roles()->attach(Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]));
+
+        $content = $this->actingAs($user, 'admin')
+            ->get('/admin/system')
             ->assertOk()
             ->getContent();
 
         $this->assertStringContainsString('View and update your system users.', $content);
         $this->assertStringNotContainsString('Back up your database and uploads folder.', $content);
-        $this->assertStringNotContainsString('Activate or deactivate platform plugins.', $content);
         $this->assertSame(1, substr_count($content, 'data-platform-card="'));
     }
 
     public function test_admin_without_permissions_sees_the_empty_state(): void
     {
         $this->actingAs($this->plainAdmin(), 'admin')
-            ->get('/admin/platform')
+            ->get('/admin/system')
             ->assertOk()
             ->assertSee('No administration tools available for your account.')
             ->assertDontSee('data-platform-card="', false);
     }
 
-    public function test_platform_sidebar_item_is_visible_for_every_admin(): void
+    public function test_system_sidebar_item_is_visible_for_every_admin(): void
     {
         $registry = $this->app->make(AdminMenuRegistry::class);
 
-        $this->assertTrue($registry->visibleFor($this->adminUser())->pluck('id')->contains('platform'));
-        $this->assertTrue($registry->visibleFor($this->plainAdmin())->pluck('id')->contains('platform'));
+        $this->assertTrue($registry->visibleFor($this->adminUser())->pluck('id')->contains('system'));
+        $this->assertTrue($registry->visibleFor($this->plainAdmin())->pluck('id')->contains('system'));
 
         $this->actingAs($this->plainAdmin(), 'admin')
-            ->get('/admin/platform')
+            ->get('/admin/system')
             ->assertOk()
             ->assertSee('Platform Administration');
     }

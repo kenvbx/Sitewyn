@@ -4,6 +4,7 @@ namespace Sitewyn\Core\Base\Http\Controllers\Admin;
 
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -17,8 +18,16 @@ class UserController extends Controller
 {
     public function index(): View
     {
+        // User management manages the platform team only: super admins and
+        // holders of the built-in Admin role (see
+        // PlatformAdminController::isTeamMember()). Everyone else is not part
+        // of the list — they cannot be found, edited or deleted from this UI.
         return view('core/base::admin.users.index', [
             'users' => User::query()
+                ->where(function (Builder $query): void {
+                    $query->where('is_super_admin', true)
+                        ->orWhereHas('roles', fn (Builder $roles) => $roles->where('slug', 'admin'));
+                })
                 ->with('roles')
                 ->withCount('roles')
                 ->orderByDesc('is_super_admin')

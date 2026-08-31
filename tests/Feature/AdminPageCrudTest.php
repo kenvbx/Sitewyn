@@ -327,6 +327,83 @@ class AdminPageCrudTest extends TestCase
             ->assertSee('value="Old SEO title"', false);
     }
 
+    public function test_super_admin_can_store_page_with_short_description(): void
+    {
+        $admin = $this->adminUser();
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/pages', [
+                'title' => 'Short page',
+                'status' => Page::STATUS_DRAFT,
+                'short_description' => 'A brief summary used by themes and listings.',
+            ])
+            ->assertRedirect('/admin/pages')
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('pages', [
+            'slug' => 'short-page',
+            'short_description' => 'A brief summary used by themes and listings.',
+        ]);
+    }
+
+    public function test_super_admin_can_update_page_short_description(): void
+    {
+        $admin = $this->adminUser();
+        $page = $this->createPage([
+            'title' => 'About us',
+            'slug' => 'about-us',
+            'short_description' => 'Old summary.',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put('/admin/pages/'.$page->id, [
+                'title' => 'About us',
+                'status' => Page::STATUS_DRAFT,
+                'short_description' => 'New summary for listings.',
+            ])
+            ->assertRedirect('/admin/pages/'.$page->id.'/edit')
+            ->assertSessionHas('status');
+
+        $page->refresh();
+
+        $this->assertSame('New summary for listings.', $page->short_description);
+    }
+
+    public function test_store_page_rejects_short_description_longer_than_500(): void
+    {
+        $admin = $this->adminUser();
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/pages', [
+                'title' => 'Too long summary',
+                'status' => Page::STATUS_DRAFT,
+                'short_description' => str_repeat('a', 501),
+            ])
+            ->assertSessionHasErrors('short_description');
+
+        $this->assertDatabaseMissing('pages', [
+            'title' => 'Too long summary',
+        ]);
+    }
+
+    public function test_page_edit_form_renders_short_description_field(): void
+    {
+        $admin = $this->adminUser();
+        $page = $this->createPage([
+            'title' => 'About us',
+            'slug' => 'about-us',
+            'short_description' => 'Rendered summary.',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages/'.$page->id.'/edit')
+            ->assertOk()
+            ->assertSee('name="short_description"', false)
+            ->assertSee('maxlength="500"', false)
+            ->assertSee('A brief summary used by themes and listings.')
+            ->assertSee('Rendered summary.');
+    }
+
     public function test_super_admin_can_edit_page_with_editor_and_preview_link(): void
     {
         $admin = $this->adminUser();

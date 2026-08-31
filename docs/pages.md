@@ -24,6 +24,8 @@ The `pages` table (P3-04 migration) stores static pages:
 - `title`
 - `slug`: unique, shares one namespace with `posts` so public routes never collide.
 - `content`: nullable long text (rich HTML from the shared admin editor).
+- `short_description`: nullable string(500) brief summary for themes and
+  listings (`2026_08_30_000019_add_short_description_to_pages_table`).
 - `seo_title`, `seo_description`: nullable SEO metadata.
 - `og_image`: nullable string(255) Open Graph image URL added by P3-09
   (`2026_08_30_000007_add_og_image_to_pages_table`).
@@ -129,6 +131,26 @@ Known limitation: `og_image` cannot open the media picker. The
 `admin:editor-file-picker` bridge opens the first picker instance on the page
 (the editor's own), and a second picker instance would need a
 multi-instance-aware bridge — paste an URL manually for now.
+
+## Short Description
+
+The create/edit form (Content tab, between the slug and the content editor)
+renders a `short_description` textarea: rows 3, `maxlength` 500, hint
+*"A brief summary used by themes and listings."* It validates as
+`nullable|string|max:500` and persists through the same validated → fillable
+flow as the other page fields.
+
+Purpose and scope:
+
+- It is a plain summary field **for themes and listings** (card excerpts,
+  section teasers, meta fallbacks). Nothing renders it out of the box: the
+  public page show route and the admin preview keep rendering the stored
+  `content` — a theme has to opt in (`$page->short_description`).
+- **Not translatable (MVP)**: the column lives on `pages` only;
+  `page_translations` stays `title`/`content`/`seo_title`/`seo_description`
+  and the translations form has no matching input. A translatable short
+  description (`page_translations.short_description` plus a form input) is
+  left as an enhancement.
 
 ## Preview
 

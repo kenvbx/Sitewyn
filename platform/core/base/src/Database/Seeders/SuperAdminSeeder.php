@@ -20,6 +20,19 @@ class SuperAdminSeeder extends Seeder
             ],
         );
 
+        // Built-in Admin role: marks team members for the user management area
+        // (Users card on the Platform Administration hub, /admin/users list).
+        // It deliberately ships with no permissions — super admins assign them
+        // through the Roles UI. Recreated on every db:seed run.
+        Role::query()->firstOrCreate(
+            ['slug' => 'admin'],
+            [
+                'name' => 'Admin',
+                'description' => 'Built-in team role for user management; assign permissions through the Roles UI.',
+                'is_system' => true,
+            ],
+        );
+
         $user = User::query()->updateOrCreate(
             ['email' => $this->adminEmail()],
             [
@@ -71,7 +84,11 @@ class SuperAdminSeeder extends Seeder
             return $value;
         }
 
-        if ($this->command?->getInput()->isInteractive()) {
+        // Prompt only when a human is attached to the terminal — the same
+        // interactivity rule ConfiguresPrompts uses. The seed command exposes
+        // no usable input API for seeders, so detect a TTY directly; CI,
+        // tests and --no-interaction runs fall back to the default.
+        if (defined('STDIN') && stream_isatty(STDIN)) {
             $answer = $key === 'sitewyn-base.admin.password'
                 ? $this->command->secret($question)
                 : $this->command->ask($question, $default);

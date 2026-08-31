@@ -30,10 +30,17 @@ class AdminUserCrudTest extends TestCase
             'is_super_admin' => true,
             'is_active' => true,
         ]);
-        User::factory()->create([
+        // Only team members are listed on /admin/users (super admins and
+        // Admin-role holders), so the other visible user needs the Admin role.
+        $adminRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $editor = User::factory()->create([
             'name' => 'Editor User',
             'email' => 'editor@example.com',
         ]);
+        $editor->roles()->attach($adminRole);
 
         $this->actingAs($admin, 'admin')
             ->get('/admin/users')

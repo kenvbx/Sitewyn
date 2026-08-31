@@ -51,7 +51,7 @@ Route::prefix('admin')
             // Platform Administration hub — no permission gate, every signed-in
             // admin can open it; each card on the page gates itself (Dashboard
             // precedent).
-            Route::get('platform', PlatformAdminController::class)->name('platform');
+            Route::get('system', PlatformAdminController::class)->name('system');
 
             Route::get('roles', [RoleController::class, 'index'])
                 ->middleware('permission:roles.index')
