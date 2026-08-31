@@ -29,6 +29,7 @@ function collectModuleInputs() {
                 const candidates = [
                     path.join(resourceRoot, 'css', 'app.css'),
                     path.join(resourceRoot, 'css', 'admin.css'),
+                    path.join(resourceRoot, 'css', 'theme.css'),
                     path.join(resourceRoot, 'js', 'app.js'),
                     path.join(resourceRoot, 'js', 'admin.js'),
                 ];

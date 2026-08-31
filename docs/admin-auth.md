@@ -221,6 +221,35 @@ site_setting('site_logo');
 The first editable keys are `site_name` and `site_logo`. The admin form uses the
 same Tabler card/form-group validation pattern as Users and Roles.
 
+P5-02 adds the `active_theme` key to the same form (select of the themes
+discovered by `ThemeManager` under `platform/themes/*`; validated against the
+available slugs). The active theme owns the public frontend views — see
+`docs/themes.md`.
+
+P5-08 adds the `robots_txt` key to the same form (textarea, max 2000 chars) and
+two public, unauthenticated SEO file routes served from core/base:
+
+- `GET /robots.txt` (`robots.txt`, `text/plain; charset=UTF-8`): returns the
+  saved `robots_txt` setting as-is; blank or unset falls back to
+  `User-agent: *\nDisallow: /admin\n` (`RobotsTxt::content()`), and clearing the
+  textarea in the form restores that default. No throttling, no session.
+- `GET /sitemap.xml` (`sitemap`, `application/xml; charset=UTF-8`): always
+  responds 200 with a valid sitemap 0.9 `<urlset>`, even when nothing is
+  published. Entries come from `Sitewyn\Core\Base\Support\SitemapRegistry` — a
+  singleton like `AdminMenuRegistry` where modules `register()` callables that
+  return `['loc' => absolute URL, 'lastmod' => \DateTimeInterface|null]`; the
+  controller invokes every contributor per request, dedupes by `loc`, and core
+  never queries page/post repositories itself. The page package contributes
+  published pages (`/{slug}`) and the blog package published posts
+  (`/blog/{slug}`) with `updated_at` as `lastmod`, so newly published content
+  appears on the next sitemap request with no cache to clear.
+
+Because core/base routes are registered before every package route, both
+file names are matched before the page catch-all `/{slug}`; the catch-all
+additionally excludes `sitemap.xml` and `robots.txt` as a second line of
+defense (`SeoFilesTest` covers the dispute case where content is named exactly
+like the files).
+
 P1-20 adds focused access-control coverage for the admin area. The suite checks
 that guests are redirected to `/admin/login`, regular admins without route
 permissions receive 403 responses, admins with the required role permission can

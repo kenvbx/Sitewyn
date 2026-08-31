@@ -41,6 +41,27 @@
             invalid-feedback="Site logo may not be greater than 2048 characters."
           />
 
+          <x-admin-form-group
+            name="active_theme"
+            label="Theme"
+            type="select"
+            :value="$settings['active_theme']"
+            :options="$themeOptions"
+            hint="Themes live in platform/themes and own the public frontend views. The default theme is used when the selected one is removed."
+            invalid-feedback="The selected theme does not exist."
+          />
+
+          <x-admin-form-group
+            name="robots_txt"
+            label="robots.txt"
+            type="textarea"
+            :rows="6"
+            :value="$settings['robots_txt']"
+            :maxlength="2000"
+            hint="Served as text/plain at /robots.txt. Clear the field to restore the default."
+            invalid-feedback="robots.txt may not be greater than 2000 characters."
+          />
+
           <x-slot:footer>
             <div class="text-end">
               <button type="submit" class="btn btn-primary">Save settings</button>
@@ -64,6 +85,13 @@
               <div class="text-secondary">{{ config('app.url') }}</div>
             </div>
           </div>
+        </x-admin-card>
+
+        <x-admin-card title="Languages" class="mt-3">
+          <p class="text-secondary mb-3">
+            The site serves its default language only. Add more languages to translate pages, posts, and categories.
+          </p>
+          <a href="{{ route('admin.settings.languages.index') }}" class="btn">Manage languages</a>
         </x-admin-card>
       </div>
     </div>

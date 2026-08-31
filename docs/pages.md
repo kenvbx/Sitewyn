@@ -30,9 +30,16 @@ The `pages` table (P3-04 migration) stores static pages:
 - `status`: `draft` (default) or `published`, indexed.
 - `created_at`, `updated_at`
 
+P5-01 adds the `page_translations` table (same package): `id`, `page_id` FK
+`cascadeOnDelete`, `locale` string(10) FK → `languages.code`
+`cascadeOnDelete`, nullable `title`/`content`/`seo_title`/`seo_description`,
+timestamps, `unique(page_id, locale)`. See `docs/multi-language.md` for the
+full translation architecture.
+
 ## Model And Repository
 
-- `Sitewyn\Packages\Page\Models\Page` with `STATUS_DRAFT` / `STATUS_PUBLISHED` constants.
+- `Sitewyn\Packages\Page\Models\Page` with `STATUS_DRAFT` / `STATUS_PUBLISHED`
+  constants and a `translations()` `hasMany` to `PageTranslation` (P5-01).
 - `Sitewyn\Packages\Page\Repositories\PageRepository` supporting `all()`,
   `byStatus()`, `search(term, ?status)`, `find()`, `findBySlug()`,
   `findPublishedBySlug()`, `create()`, `update()`, `delete()`.
@@ -131,6 +138,18 @@ page title, a status/slug meta line, and the stored content. Draft pages show a
 without the draft markings. The view is marked `noindex, nofollow`. Content is
 admin-authored rich text and is rendered as stored HTML.
 
+## Translations (P5-01)
+
+The page form renders a **Translations** section below the main cards (inside
+the same `<form>`): one card per active non-default language with
+`title`, a content editor, and `seo_title`/`seo_description`, submitting as
+`translations[vi][title]` etc. Placeholders show the default-language content.
+When no extra languages exist it hints *"Add languages in Settings to
+translate content."* — languages are managed at `/admin/settings/languages`
+(reusing `settings.edit`). Locale keys outside the active non-default set are
+rejected with 422; a locale whose fields are all empty gets its translation
+row deleted. Details, tests, and the frontend behavior: `docs/multi-language.md`.
+
 ## Public Frontend
 
 P3-10 serves published pages on the public site (no theme yet — same minimal
@@ -143,25 +162,55 @@ GET /{slug}   pages.show   PagePublicController@show
 - Only `published` pages resolve, via `PageRepository::findPublishedBySlug()`.
   Drafts and unknown slugs return the framework's plain 404 — drafts are never
   exposed publicly (the admin preview stays the only way to see them).
+
+P5-01 adds the localized counterpart **before** the catch-all:
+
+```text
+GET /{locale}/{slug}   pages.localized   PagePublicController@showLocalized
+```
+
+The slug stays the default language's (translations never own slugs); the
+translation only overrides `title`/`content`/`seo_title`/`seo_description`
+with per-field fallback, and `<html lang>` switches to the locale. Unknown,
+inactive, or default locales 404 — see `docs/multi-language.md` for the full
+route-safety analysis.
 - **Route-swallowing protection**: `/{slug}` is a single-segment catch-all, so it
   is the last route in the page package's `routes/web.php` and carries a
   `where()` regex excluding the reserved first segments `admin`, `blog`, `api`,
   `_platform`, `storage`, `build`, `vendor`, `up`, `login`, `logout`,
-  `register`, `password`, `reset`. Without it, single-segment URLs like `/blog`
-  or `/up` would be swallowed by the page lookup instead of falling through to
-  the framework (e.g. `/admin` still redirects to login, `/up` stays the health
-  check). Only exact matches are excluded: `blog-slug` or `administrator` still
-  reach the page lookup.
+  `register`, `password`, `reset`, `sitemap.xml`, `robots.txt`. Without it,
+  single-segment URLs like `/blog` or `/up` would be swallowed by the page
+  lookup instead of falling through to the framework (e.g. `/admin` still
+  redirects to login, `/up` stays the health check). Only exact matches are
+  excluded: `blog-slug` or `administrator` still reach the page lookup.
 - **Slug namespace**: P3-04 keeps slugs unique across `pages` **and** `posts`,
   so `/{slug}` only ever looks up pages and `/blog/{slug}` (blog package) only
   posts — the lookup can never be ambiguous. A post slug under `/{slug}` and a
   page slug under `/blog/{slug}` both 404.
 - **Meta tags**: `<title>` = `seo_title ?: title`; `meta description` and
   `og:description` = `seo_description` when set; `og:title` always; `og:image`
-  when `og_image` is set; `og:type` is `website`. The view
-  (`package/page::frontend.show`) is standalone HTML with a site-name header and
-  the stored content rendered as HTML (same trust model as the admin preview:
-  authored by admins holding `page.create`/`page.edit`).
+  when `og_image` is set; `og:type` is `website`. The controller renders the
+  top-level view `frontend.page`, which resolves into the **active theme**
+  (P5-02) — the theme owns the markup: header, nav, content, footer. The
+  stored content is rendered as HTML (same trust model as the admin preview:
+  authored by admins holding `page.create`/`page.edit`). See
+  `docs/themes.md` for the theme system.
+
+## Sitemap (P5-08)
+
+The page package contributes its published pages to the shared sitemap (P5-08).
+In `PageServiceProvider::boot()` it registers a callable on the core
+`Sitewyn\Core\Base\Support\SitemapRegistry`; the core `/sitemap.xml` route
+invokes it per request, mapping each published page to
+`['loc' => url("/{slug}"), 'lastmod' => updated_at]`. Pages published after the
+last sitemap request appear on the next one — there is no sitemap cache. See
+`docs/admin-auth.md` (Settings section) for the full `/sitemap.xml` contract and
+the `robots.txt` counterpart.
+
+One caveat inherited from the route table: a manually entered slug equal to a
+reserved segment (`sitemap.xml`, `blog`, `admin`, ...) can be saved through the
+admin form, but the page is then unreachable publicly (the catch-all excludes
+reserved segments), so prefer generated slugs.
 
 ## Tests
 
@@ -169,5 +218,8 @@ GET /{slug}   pages.show   PagePublicController@show
 vendor/bin/phpunit --filter AdminPageCrudTest
 vendor/bin/phpunit --filter PageRepositoryTest
 vendor/bin/phpunit --filter PageFrontendTest
+vendor/bin/phpunit --filter AdminLanguagesTest
+vendor/bin/phpunit --filter TranslationsTest
+vendor/bin/phpunit --filter SeoFilesTest
 vendor/bin/phpunit --filter AdminPermissionCoverageTest
 ```

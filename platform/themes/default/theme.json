@@ -1,0 +1,10 @@
+{
+    "name": "Sitewyn Default",
+    "slug": "default",
+    "version": "1.0.0",
+    "description": "Content-first editorial default theme in the spirit of the classic WordPress theme: minimal, fast, light and dark.",
+    "author": "Sitewyn",
+    "widget_areas": [
+        { "slug": "footer", "name": "Footer widgets" }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+    "name": "Test Marker",
+    "slug": "test-marker",
+    "version": "1.0.0",
+    "description": "Minimal fixture theme used by automated tests to prove that switching the active theme changes the rendered frontend.",
+    "author": "Sitewyn"
+}

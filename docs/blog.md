@@ -33,10 +33,20 @@ string, **not** a foreign key to `media_files`: the blog stays decoupled from
 the media module, deleting a media file never breaks a post, and moving media
 to S3/CDN (P5-09) becomes a pure data rewrite.
 
+P5-01 adds two translation tables (same package, see `docs/multi-language.md`):
+
+- `post_translations` (`2026_08_30_000013`): `id`, `post_id` FK
+  `cascadeOnDelete`, `locale` string(10) FK → `languages.code`
+  `cascadeOnDelete`, nullable `title`/`content`/`seo_title`/`seo_description`,
+  timestamps, `unique(post_id, locale)`.
+- `category_translations` (`2026_08_30_000014`): same shape with
+  `category_id` and a nullable `name` only.
+
 ## Model And Repository
 
 - `Sitewyn\Packages\Blog\Models\Post` with `STATUS_DRAFT` / `STATUS_PUBLISHED`,
-  `category()` (BelongsTo) and `tags()` (BelongsToMany).
+  `category()` (BelongsTo), `tags()` (BelongsToMany), and `translations()`
+  (`hasMany` to `PostTranslation`, P5-01).
 - `Sitewyn\Packages\Blog\Repositories\PostRepository` supporting `all()`,
   `byStatus()`, `inCategory()`, `search(term, ?status, ?categoryId)`, `find()`,
   `findBySlug()`, `findPublishedBySlug()`, `create()`, `update()`, `delete()`.
@@ -186,6 +196,19 @@ post slug still gets the plain slug; only duplicates inside `tags` are suffixed
 - Deleting a tag cascades its `post_tag` pivot rows only: posts lose that tag
   but keep their other tags, and no post is ever deleted.
 
+## Translations (P5-01)
+
+The post form renders a **Translations** section below the main cards (inside
+the same `<form>`): one card per active non-default language with `title`, a
+content editor, and `seo_title`/`seo_description`, submitting as
+`translations[vi][title]` etc. The category form gets the same section with a
+`name` field only. Placeholders show the default-language content; when no
+extra languages exist the section hints *"Add languages in Settings to
+translate content."* — languages are managed at `/admin/settings/languages`
+(reusing `settings.edit`). Locale keys outside the active non-default set are
+rejected with 422; a locale whose fields are all empty gets its translation
+row deleted. Details, tests, and the frontend behavior: `docs/multi-language.md`.
+
 ## Editor, Media Picker, And Featured Image
 
 Create/edit forms use the shared `<x-admin-editor name="content">` component
@@ -248,19 +271,47 @@ GET /blog/{slug}   blog.posts.show   PostPublicController@show
 - Only `published` posts resolve, via `PostRepository::findPublishedBySlug()`.
   Drafts and unknown slugs return the framework's plain 404 — drafts are never
   exposed publicly (the admin preview stays the only way to see them).
+
+P5-01 adds the localized counterpart **after** the detail route:
+
+```text
+GET /{locale}/blog/{slug}   blog.posts.localized   PostPublicController@showLocalized
+```
+
+The slug stays the default language's (translations never own slugs); the
+translation only overrides `title`/`content`/`seo_title`/`seo_description`
+with per-field fallback, and `<html lang>` switches to the locale. Unknown,
+inactive, or default locales 404 — see `docs/multi-language.md` for the full
+route-safety analysis.
+
+**Home page**: the CMS front page `GET /` (route name `home`, app-layer
+`App\Http\Controllers\HomeController`) is WordPress-style — it lists the
+latest published posts, newest first, each with a plain-text excerpt (stored
+HTML stripped, whitespace collapsed, capped at ~160 characters) linking to
+`/blog/{slug}`, plus a compact index of published pages linking to `/{slug}`.
+It renders `frontend.home`, which resolves into the active theme (see
+`docs/themes.md`); the default theme shows an English-only empty state when
+no published content exists. Drafts never appear.
 - **Route naming**: the route name is `blog.posts.show`, mirroring the `/blog/`
   URL prefix; the page catch-all counterpart is `pages.show` (page package).
 - **Slug namespace**: post slugs share one namespace with `pages` (P3-04), so
   `/blog/{slug}` only ever looks up posts and the page catch-all `/{slug}` only
   pages. A page slug under `/blog/{slug}` and a post slug under `/{slug}` both
   404 — the two public routes can never serve the wrong content type.
-- **What renders** (`package/blog::frontend.show`): site-name header, `<h1>`
-  title, publish date (`updated_at`), tags as plain badges (links arrive with
-  the theme in P5), the featured image when set, and the stored content as
-  HTML (same trust model as the admin preview).
+- **What renders** (`frontend.post`, resolved into the active theme — P5-02,
+  see `docs/themes.md`): site header + nav, `<h1>` title, featured image when
+  set, publish date (`updated_at`) plus tags as plain accent-colored text
+  separated by commas (no public tag archive exists yet, so they are not
+  links), and the stored content as HTML (same trust model as the admin
+  preview).
 - **Meta tags**: `<title>` = `seo_title ?: title`; `meta description` and
   `og:description` = `seo_description` when set; `og:title` always; `og:image`
   when `og_image` is set; `og:type` is `article`.
+- **Sitemap (P5-08)**: `BlogServiceProvider::boot()` registers a contributor on
+  the core `SitemapRegistry`, mapping each published post to
+  `['loc' => url("/blog/{slug}"), 'lastmod' => updated_at]`; the core
+  `/sitemap.xml` route invokes it per request, so new posts show up on the next
+  request with no cache to clear. See `docs/admin-auth.md` (Settings section).
 
 ## Tests
 
@@ -271,5 +322,8 @@ vendor/bin/phpunit --filter AdminTagCrudTest
 vendor/bin/phpunit --filter BlogRepositoryTest
 vendor/bin/phpunit --filter BlogSchemaTest
 vendor/bin/phpunit --filter PostFrontendTest
+vendor/bin/phpunit --filter AdminLanguagesTest
+vendor/bin/phpunit --filter TranslationsTest
+vendor/bin/phpunit --filter SeoFilesTest
 vendor/bin/phpunit --filter AdminPermissionCoverageTest
 ```
