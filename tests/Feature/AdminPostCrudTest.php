@@ -539,6 +539,57 @@ class AdminPostCrudTest extends TestCase
             ->assertDontSee('First post');
     }
 
+    public function test_posts_index_filters_by_created_date_range(): void
+    {
+        $admin = $this->adminUser();
+        $this->createPostCreatedOn('2026-06-15 09:00:00', ['title' => 'June post', 'slug' => 'june-post']);
+        $this->createPostCreatedOn('2026-01-05 09:00:00', ['title' => 'January post', 'slug' => 'january-post']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts?created_from=2026-06-01&created_to=2026-06-30')
+            ->assertOk()
+            ->assertSee('June post')
+            ->assertDontSee('January post');
+
+        // Only one bound set: the other side stays open.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts?created_to=2026-02-01')
+            ->assertOk()
+            ->assertSee('January post')
+            ->assertDontSee('June post');
+    }
+
+    public function test_posts_index_ignores_invalid_created_date_filters(): void
+    {
+        $admin = $this->adminUser();
+        $this->createPostCreatedOn('2026-06-15 09:00:00', ['title' => 'June post', 'slug' => 'june-post']);
+        $this->createPostCreatedOn('2026-01-05 09:00:00', ['title' => 'January post', 'slug' => 'january-post']);
+
+        // Non-dates and impossible dates count as no filter at all.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts?created_from=not-a-date&created_to=2026-13-99')
+            ->assertOk()
+            ->assertSee('June post')
+            ->assertSee('January post');
+    }
+
+    public function test_posts_index_shows_active_filter_count_on_filters_button(): void
+    {
+        $admin = $this->adminUser();
+        $news = Category::query()->create(['name' => 'News', 'slug' => 'news']);
+        $this->createPost(['title' => 'First post', 'slug' => 'first-post']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts?status='.Post::STATUS_DRAFT.'&category_id='.$news->id)
+            ->assertOk()
+            ->assertSee('<span class="badge bg-blue-lt">2</span>', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts')
+            ->assertOk()
+            ->assertDontSee('<span class="badge bg-blue-lt">', false);
+    }
+
     public function test_preview_shows_draft_posts_with_watermark(): void
     {
         $admin = $this->adminUser();
@@ -670,6 +721,14 @@ class AdminPostCrudTest extends TestCase
             'status' => Post::STATUS_DRAFT,
             ...$attributes,
         ]);
+    }
+
+    private function createPostCreatedOn(string $createdAt, array $attributes = []): Post
+    {
+        $post = $this->createPost($attributes);
+        $post->forceFill(['created_at' => $createdAt])->save();
+
+        return $post->refresh();
     }
 
     /**

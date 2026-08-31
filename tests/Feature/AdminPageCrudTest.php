@@ -387,6 +387,56 @@ class AdminPageCrudTest extends TestCase
             ->assertDontSee('About us');
     }
 
+    public function test_pages_index_filters_by_created_date_range(): void
+    {
+        $admin = $this->adminUser();
+        $this->createPageCreatedOn('2026-06-15 09:00:00', ['title' => 'June page', 'slug' => 'june-page']);
+        $this->createPageCreatedOn('2026-01-05 09:00:00', ['title' => 'January page', 'slug' => 'january-page']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages?created_from=2026-06-01&created_to=2026-06-30')
+            ->assertOk()
+            ->assertSee('June page')
+            ->assertDontSee('January page');
+
+        // Only one bound set: the other side stays open.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages?created_from=2026-02-01')
+            ->assertOk()
+            ->assertSee('June page')
+            ->assertDontSee('January page');
+    }
+
+    public function test_pages_index_ignores_invalid_created_date_filters(): void
+    {
+        $admin = $this->adminUser();
+        $this->createPageCreatedOn('2026-06-15 09:00:00', ['title' => 'June page', 'slug' => 'june-page']);
+        $this->createPageCreatedOn('2026-01-05 09:00:00', ['title' => 'January page', 'slug' => 'january-page']);
+
+        // Non-dates and impossible dates count as no filter at all.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages?created_from=not-a-date&created_to=2026-13-99')
+            ->assertOk()
+            ->assertSee('June page')
+            ->assertSee('January page');
+    }
+
+    public function test_pages_index_shows_active_filter_count_on_filters_button(): void
+    {
+        $admin = $this->adminUser();
+        $this->createPage(['title' => 'About us', 'slug' => 'about-us']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages?status='.Page::STATUS_DRAFT.'&created_from=2026-01-01')
+            ->assertOk()
+            ->assertSee('<span class="badge bg-blue-lt">2</span>', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages')
+            ->assertOk()
+            ->assertDontSee('<span class="badge bg-blue-lt">', false);
+    }
+
     public function test_preview_shows_draft_pages_with_watermark(): void
     {
         $admin = $this->adminUser();
@@ -516,6 +566,14 @@ class AdminPageCrudTest extends TestCase
             'status' => Page::STATUS_DRAFT,
             ...$attributes,
         ]);
+    }
+
+    private function createPageCreatedOn(string $createdAt, array $attributes = []): Page
+    {
+        $page = $this->createPage($attributes);
+        $page->forceFill(['created_at' => $createdAt])->save();
+
+        return $page->refresh();
     }
 
     /**
