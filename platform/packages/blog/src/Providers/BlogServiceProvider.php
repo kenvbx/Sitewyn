@@ -3,8 +3,14 @@
 namespace Sitewyn\Packages\Blog\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Sitewyn\Core\Base\Observers\AuditObserver;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
+use Sitewyn\Core\Base\Support\SitemapRegistry;
+use Sitewyn\Packages\Blog\Models\Category;
+use Sitewyn\Packages\Blog\Models\Post;
+use Sitewyn\Packages\Blog\Models\Tag;
+use Sitewyn\Packages\Blog\Repositories\PostRepository;
 
 class BlogServiceProvider extends ServiceProvider
 {
@@ -18,8 +24,10 @@ class BlogServiceProvider extends ServiceProvider
         $this->loadViewsFrom($this->modulePath('resources/views'), 'package/blog');
         $this->loadRoutesFrom($this->modulePath('routes/web.php'));
         $this->loadMigrationsFrom($this->modulePath('database/migrations'));
+        $this->registerAuditObserver();
         $this->registerPermissions();
         $this->registerAdminMenu();
+        $this->registerSitemapContributor();
     }
 
     private function modulePath(string $path = ''): string
@@ -27,6 +35,17 @@ class BlogServiceProvider extends ServiceProvider
         $basePath = dirname(__DIR__, 2);
 
         return $path === '' ? $basePath : $basePath.DIRECTORY_SEPARATOR.$path;
+    }
+
+    private function registerAuditObserver(): void
+    {
+        if (! class_exists(AuditObserver::class)) {
+            return;
+        }
+
+        Post::observe(AuditObserver::class);
+        Category::observe(AuditObserver::class);
+        Tag::observe(AuditObserver::class);
     }
 
     private function registerAdminMenu(): void
@@ -64,6 +83,25 @@ class BlogServiceProvider extends ServiceProvider
             'active' => ['admin.tags.*'],
             'order' => 23,
         ]);
+    }
+
+    private function registerSitemapContributor(): void
+    {
+        if (! class_exists(SitemapRegistry::class)) {
+            return;
+        }
+
+        // The callable runs lazily on each /sitemap.xml request, so posts
+        // published after boot still show up without any cache to clear.
+        $this->app->make(SitemapRegistry::class)->register(function (): array {
+            return $this->app->make(PostRepository::class)
+                ->byStatus(Post::STATUS_PUBLISHED)
+                ->map(fn (Post $post): array => [
+                    'loc' => url("/blog/{$post->slug}"),
+                    'lastmod' => $post->updated_at,
+                ])
+                ->all();
+        });
     }
 
     private function registerPermissions(): void

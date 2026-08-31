@@ -3,8 +3,12 @@
 namespace Sitewyn\Packages\Page\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Sitewyn\Core\Base\Observers\AuditObserver;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
+use Sitewyn\Core\Base\Support\SitemapRegistry;
+use Sitewyn\Packages\Page\Models\Page;
+use Sitewyn\Packages\Page\Repositories\PageRepository;
 
 class PageServiceProvider extends ServiceProvider
 {
@@ -18,8 +22,10 @@ class PageServiceProvider extends ServiceProvider
         $this->loadViewsFrom($this->modulePath('resources/views'), 'package/page');
         $this->loadRoutesFrom($this->modulePath('routes/web.php'));
         $this->loadMigrationsFrom($this->modulePath('database/migrations'));
+        $this->registerAuditObserver();
         $this->registerPermissions();
         $this->registerAdminMenu();
+        $this->registerSitemapContributor();
     }
 
     private function modulePath(string $path = ''): string
@@ -44,6 +50,34 @@ class PageServiceProvider extends ServiceProvider
             'active' => ['admin.pages.*'],
             'order' => 20,
         ]);
+    }
+
+    private function registerSitemapContributor(): void
+    {
+        if (! class_exists(SitemapRegistry::class)) {
+            return;
+        }
+
+        // The callable runs lazily on each /sitemap.xml request, so pages
+        // published after boot still show up without any cache to clear.
+        $this->app->make(SitemapRegistry::class)->register(function (): array {
+            return $this->app->make(PageRepository::class)
+                ->byStatus(Page::STATUS_PUBLISHED)
+                ->map(fn (Page $page): array => [
+                    'loc' => url("/{$page->slug}"),
+                    'lastmod' => $page->updated_at,
+                ])
+                ->all();
+        });
+    }
+
+    private function registerAuditObserver(): void
+    {
+        if (! class_exists(AuditObserver::class)) {
+            return;
+        }
+
+        Page::observe(AuditObserver::class);
     }
 
     private function registerPermissions(): void

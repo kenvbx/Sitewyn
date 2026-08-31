@@ -1,11 +1,12 @@
 @if ($paginator->hasPages())
   @if ($cardFooter)
     <div {{ $attributes->merge(['class' => trim('card-footer ' . $class)]) }}>
-      {{ $paginator->links() }}
+      {{-- Tabler is Bootstrap-based, so the server-side links use the Bootstrap view. --}}
+      {{ $paginator->links('pagination::bootstrap-4') }}
     </div>
   @else
     <div {{ $attributes->merge(['class' => $class]) }}>
-      {{ $paginator->links() }}
+      {{ $paginator->links('pagination::bootstrap-4') }}
     </div>
   @endif
 @endif

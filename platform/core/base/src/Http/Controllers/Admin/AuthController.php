@@ -3,6 +3,7 @@
 namespace Sitewyn\Core\Base\Http\Controllers\Admin;
 
 use App\Models\User;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -33,6 +34,10 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             $request->hitRateLimit();
+
+            // This controller verifies credentials manually instead of via
+            // Auth::attempt(), so the audit Failed listener relies on this.
+            event(new Failed('admin', $user, ['email' => $credentials['email']]));
 
             throw ValidationException::withMessages([
                 'email' => __('These credentials do not match our records.'),
