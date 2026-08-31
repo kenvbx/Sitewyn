@@ -106,6 +106,9 @@
   </div>
 </div>
 
+{{-- The Translations section is part of the same <form>; every language card submits with the post. --}}
+@include('package/blog::admin.translations')
+
 @once
   @push('scripts')
     <script>

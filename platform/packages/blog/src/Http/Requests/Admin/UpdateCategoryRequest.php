@@ -5,6 +5,7 @@ namespace Sitewyn\Packages\Blog\Http\Requests\Admin;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Sitewyn\Core\Base\Support\Translations;
 use Sitewyn\Packages\Blog\Models\Category;
 
 class UpdateCategoryRequest extends FormRequest
@@ -50,6 +51,8 @@ class UpdateCategoryRequest extends FormRequest
                     }
                 },
             ],
+            'translations' => ['nullable', 'array', Translations::localeKeyRule()],
+            'translations.*.name' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

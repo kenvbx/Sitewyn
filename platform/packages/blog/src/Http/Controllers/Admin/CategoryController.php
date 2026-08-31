@@ -6,7 +6,9 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Sitewyn\Core\Base\Models\Language;
 use Sitewyn\Core\Base\Support\SlugService;
+use Sitewyn\Core\Base\Support\Translations;
 use Sitewyn\Packages\Blog\Http\Requests\Admin\StoreCategoryRequest;
 use Sitewyn\Packages\Blog\Http\Requests\Admin\UpdateCategoryRequest;
 use Sitewyn\Packages\Blog\Models\Category;
@@ -37,12 +39,15 @@ class CategoryController extends Controller
         return view('package/blog::admin.categories.create', [
             'category' => new Category,
             'parents' => $this->parentOptions(),
+            'languages' => Language::translatable(),
         ]);
     }
 
     public function store(StoreCategoryRequest $request): RedirectResponse
     {
         $attributes = $request->validated();
+        $translations = $attributes['translations'] ?? null;
+        unset($attributes['translations']);
 
         // Category slugs live in their own namespace: uniqueness is only
         // checked against the categories table, never pages/posts.
@@ -51,7 +56,8 @@ class CategoryController extends Controller
             (string) $attributes['name'],
         );
 
-        $this->categories->create($attributes);
+        $category = $this->categories->create($attributes);
+        $this->saveTranslations($category, $translations);
 
         admin_flash()->success(__('Category created successfully.'));
 
@@ -64,12 +70,15 @@ class CategoryController extends Controller
         return view('package/blog::admin.categories.edit', [
             'category' => $category,
             'parents' => $this->parentOptions($category),
+            'languages' => Language::translatable(),
         ]);
     }
 
     public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
     {
         $attributes = $request->validated();
+        $translations = $attributes['translations'] ?? null;
+        unset($attributes['translations']);
 
         // An empty slug keeps the current one; the repository only
         // regenerates slugs when a slug key is actually present.
@@ -85,6 +94,7 @@ class CategoryController extends Controller
         }
 
         $this->categories->update($category, $attributes);
+        $this->saveTranslations($category, $translations);
 
         admin_flash()->success(__('Category updated successfully.'));
 
@@ -127,5 +137,17 @@ class CategoryController extends Controller
         return $slug !== ''
             ? $service->uniqueFor($slug, ['categories'])
             : $service->generateUnique($name, ['categories']);
+    }
+
+    /**
+     * Upsert or remove one translation row per submitted locale. Kept here
+     * (not in the repository) so the shared Translations helper receives the
+     * relation and the category columns stay repository-owned.
+     *
+     * @param  array<string, mixed>|null  $translations
+     */
+    private function saveTranslations(Category $category, ?array $translations): void
+    {
+        Translations::save($category->translations(), $translations, ['name']);
     }
 }

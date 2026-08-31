@@ -51,3 +51,6 @@
     </x-admin-card>
   </div>
 </div>
+
+{{-- The Translations section is part of the same <form>; every language card submits with the category. --}}
+@include('package/blog::admin.categories.translations')

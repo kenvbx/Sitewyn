@@ -4,6 +4,7 @@ namespace Sitewyn\Packages\Blog\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Sitewyn\Core\Base\Support\Translations;
 
 class StoreCategoryRequest extends FormRequest
 {
@@ -25,6 +26,8 @@ class StoreCategoryRequest extends FormRequest
                 'nullable',
                 Rule::exists('categories', 'id'),
             ],
+            'translations' => ['nullable', 'array', Translations::localeKeyRule()],
+            'translations.*.name' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

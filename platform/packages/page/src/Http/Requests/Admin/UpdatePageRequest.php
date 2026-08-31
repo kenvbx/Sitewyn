@@ -4,6 +4,7 @@ namespace Sitewyn\Packages\Page\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Sitewyn\Core\Base\Support\Translations;
 use Sitewyn\Packages\Page\Models\Page;
 
 class UpdatePageRequest extends FormRequest
@@ -26,6 +27,11 @@ class UpdatePageRequest extends FormRequest
             'seo_description' => ['nullable', 'string', 'max:500'],
             'og_image' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in([Page::STATUS_DRAFT, Page::STATUS_PUBLISHED])],
+            'translations' => ['nullable', 'array', Translations::localeKeyRule()],
+            'translations.*.title' => ['nullable', 'string', 'max:255'],
+            'translations.*.content' => ['nullable', 'string'],
+            'translations.*.seo_title' => ['nullable', 'string', 'max:255'],
+            'translations.*.seo_description' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

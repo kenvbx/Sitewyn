@@ -20,6 +20,18 @@ class Category extends Model
     }
 
     /**
+     * Content translations for the active non-default languages (P5-01).
+     * Slugs are shared from the default language on purpose — a translation
+     * never owns a slug, so the SlugService namespace stays untouched.
+     *
+     * @return HasMany<CategoryTranslation, $this>
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(CategoryTranslation::class);
+    }
+
+    /**
      * @return BelongsTo<Category, $this>
      */
     public function parent(): BelongsTo

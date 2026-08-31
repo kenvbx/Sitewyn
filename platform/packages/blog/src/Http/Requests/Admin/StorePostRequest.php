@@ -4,6 +4,7 @@ namespace Sitewyn\Packages\Blog\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Sitewyn\Core\Base\Support\Translations;
 use Sitewyn\Packages\Blog\Models\Post;
 
 class StorePostRequest extends FormRequest
@@ -29,6 +30,11 @@ class StorePostRequest extends FormRequest
             'category_id' => ['nullable', 'exists:categories,id'],
             'featured_image' => ['nullable', 'string', 'max:255'],
             'tags_input' => ['nullable', 'string', 'max:2000'],
+            'translations' => ['nullable', 'array', Translations::localeKeyRule()],
+            'translations.*.title' => ['nullable', 'string', 'max:255'],
+            'translations.*.content' => ['nullable', 'string'],
+            'translations.*.seo_title' => ['nullable', 'string', 'max:255'],
+            'translations.*.seo_description' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

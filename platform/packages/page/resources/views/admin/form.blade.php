@@ -53,3 +53,6 @@
   </div>
 </div>
 
+{{-- The Translations section is part of the same <form>; every language card submits with the page. --}}
+@include('package/page::admin.translations')
+
