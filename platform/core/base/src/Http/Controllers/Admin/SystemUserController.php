@@ -7,32 +7,60 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Sitewyn\Core\Base\Http\Requests\Admin\StoreTeamUserRequest;
 use Sitewyn\Core\Base\Http\Requests\Admin\UpdateTeamUserRequest;
 use Sitewyn\Core\Base\Models\Role;
+use Sitewyn\Core\Base\Support\DateFilter;
 
 class SystemUserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->query('q', ''));
+        $isActive = $this->activeFilter($request->query('is_active'));
+        $role = $this->roleFilter($request->query('role'));
+        $createdFrom = $this->dateFilter($request->query('created_from'));
+        $createdTo = $this->dateFilter($request->query('created_to'));
+
         // Team user management inside Platform Administration: this surface
         // manages the platform team only — super admins and holders of the
         // built-in Admin role (User::isTeamMember()). Everyone else belongs
         // to /admin/users (UserController); they are not listed here.
+        $users = User::query()
+            ->where(function (Builder $query): void {
+                $query->where('is_super_admin', true)
+                    ->orWhereHas('roles', fn (Builder $roles) => $roles->where('slug', 'admin'));
+            })
+            ->when($search !== '', fn (Builder $query) => $query->where(
+                fn (Builder $query) => $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+            ))
+            ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive))
+            ->when($role === 'super', fn (Builder $query) => $query->where('is_super_admin', true))
+            ->when(is_int($role), fn (Builder $query) => $query->whereHas(
+                'roles',
+                fn (Builder $roles) => $roles->where('roles.id', $role)
+            ))
+            ->when($createdFrom !== null, fn (Builder $query) => $query->whereDate('created_at', '>=', $createdFrom))
+            ->when($createdTo !== null, fn (Builder $query) => $query->whereDate('created_at', '<=', $createdTo))
+            ->with('roles')
+            ->withCount('roles')
+            ->orderByDesc('is_super_admin')
+            ->orderBy('name')
+            ->get();
+
         return view('core/base::admin.system-users.index', [
-            'users' => User::query()
-                ->where(function (Builder $query): void {
-                    $query->where('is_super_admin', true)
-                        ->orWhereHas('roles', fn (Builder $roles) => $roles->where('slug', 'admin'));
-                })
-                ->with('roles')
-                ->withCount('roles')
-                ->orderByDesc('is_super_admin')
-                ->orderBy('name')
-                ->get(),
+            'users' => $users,
+            'search' => $search,
+            'isActive' => $isActive,
+            'role' => $role,
+            'createdFrom' => $createdFrom,
+            'createdTo' => $createdTo,
+            'roles' => Role::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -199,6 +227,43 @@ class SystemUserController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * The status select submits `0`/`1` strings; anything else counts as no
+     * filter so crafted query input never changes the listing semantics.
+     */
+    private function activeFilter(mixed $isActive): ?int
+    {
+        return in_array($isActive, ['0', '1'], true) ? (int) $isActive : null;
+    }
+
+    /**
+     * The role select submits the sentinel `super` for the super admin flag
+     * or a role id; anything else counts as no filter.
+     */
+    private function roleFilter(mixed $role): string|int|null
+    {
+        if ($role === 'super') {
+            return 'super';
+        }
+
+        if (is_numeric($role)) {
+            $roleId = (int) $role;
+
+            return $roleId > 0 ? $roleId : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Query input can be an array (e.g. ?created_from[]=1); narrow it to a
+     * string before the shared parser so bad input counts as no filter.
+     */
+    private function dateFilter(mixed $date): ?string
+    {
+        return DateFilter::parse(is_string($date) ? $date : null);
     }
 
     private function isEditingSelf(User $user): bool

@@ -321,4 +321,151 @@ class AdminUserCrudTest extends TestCase
             'user_id' => $user->id,
         ]);
     }
+
+    public function test_users_index_search_matches_name_or_email(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Content Creator',
+            'email' => 'creator-content@example.com',
+        ]);
+        User::factory()->create([
+            'name' => 'Other Person',
+            'email' => 'other-person@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?q=Creator')
+            ->assertOk()
+            ->assertSee('Content Creator')
+            ->assertDontSee('Other Person');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?q=other-person@example')
+            ->assertOk()
+            ->assertSee('Other Person')
+            ->assertDontSee('Content Creator');
+    }
+
+    public function test_users_index_filters_by_status(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Active Outsider',
+            'email' => 'active-outsider@example.com',
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Locked Outsider',
+            'email' => 'locked-outsider@example.com',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?is_active=1')
+            ->assertOk()
+            ->assertSee('Active Outsider')
+            ->assertDontSee('Locked Outsider');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?is_active=0')
+            ->assertOk()
+            ->assertSee('Locked Outsider')
+            ->assertDontSee('Active Outsider');
+
+        // Unknown values count as no filter at all.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?is_active=maybe')
+            ->assertOk()
+            ->assertSee('Active Outsider')
+            ->assertSee('Locked Outsider');
+    }
+
+    public function test_users_index_filters_by_created_date_range(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $this->createUserCreatedOn('2026-06-15 09:00:00', [
+            'name' => 'June user',
+            'email' => 'june-user@example.com',
+        ]);
+        $this->createUserCreatedOn('2026-01-05 09:00:00', [
+            'name' => 'January user',
+            'email' => 'january-user@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?created_from=2026-06-01&created_to=2026-06-30')
+            ->assertOk()
+            ->assertSee('June user')
+            ->assertDontSee('January user');
+
+        // Only one bound set: the other side stays open.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?created_from=2026-02-01')
+            ->assertOk()
+            ->assertSee('June user')
+            ->assertDontSee('January user');
+    }
+
+    public function test_users_index_ignores_invalid_created_date_filters(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $this->createUserCreatedOn('2026-06-15 09:00:00', [
+            'name' => 'June user',
+            'email' => 'june-user@example.com',
+        ]);
+        $this->createUserCreatedOn('2026-01-05 09:00:00', [
+            'name' => 'January user',
+            'email' => 'january-user@example.com',
+        ]);
+
+        // Non-dates and impossible dates count as no filter at all.
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?created_from=not-a-date&created_to=2026-13-99')
+            ->assertOk()
+            ->assertSee('June user')
+            ->assertSee('January user');
+    }
+
+    public function test_users_index_shows_active_filter_count_on_filters_button(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Plain Member',
+            'email' => 'plain-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users?is_active=0&created_from=2026-01-01')
+            ->assertOk()
+            ->assertSee('<span class="badge bg-blue-lt">2</span>', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users')
+            ->assertOk()
+            ->assertDontSee('<span class="badge bg-blue-lt">', false);
+    }
+
+    private function createUserCreatedOn(string $createdAt, array $attributes = []): User
+    {
+        $user = User::factory()->create($attributes);
+        $user->forceFill(['created_at' => $createdAt])->save();
+
+        return $user->refresh();
+    }
 }

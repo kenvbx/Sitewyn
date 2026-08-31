@@ -10,30 +10,89 @@
   <li class="breadcrumb-item active" aria-current="page">Team users</li>
 @endsection
 
+@php
+  $activeFilterCount = ($isActive !== null ? 1 : 0) + ($role !== null ? 1 : 0)
+    + ($createdFrom !== null ? 1 : 0) + ($createdTo !== null ? 1 : 0);
+@endphp
+
 @section('page-actions')
-  @can('system.users.create')
-    <a href="{{ route('admin.system.users.create') }}" class="btn btn-primary">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-        <path d="M12 5l0 14" />
-        <path d="M5 12l14 0" />
-      </svg>
-      Create user
-    </a>
-  @endcan
+  <div class="btn-list">
+    <form action="{{ route('admin.system.users.index', [], false) }}" method="get" class="d-flex gap-2" aria-label="Search and filter team users">
+      <div class="input-icon">
+        <span class="input-icon-addon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+            <path d="M21 21l-6 -6" />
+          </svg>
+        </span>
+        <input type="search" name="q" value="{{ $search }}" class="form-control" placeholder="Search users..." aria-label="Search team users">
+      </div>
+      <button type="submit" class="btn">Search</button>
+      <div class="dropdown">
+        <button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Filter team users">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">
+            <path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.414 -4.414a2 2 0 0 1 -.586 -1.414v-2.172z" />
+          </svg>
+          Filters
+          @if ($activeFilterCount > 0)
+            <span class="badge bg-blue-lt">{{ $activeFilterCount }}</span>
+          @endif
+        </button>
+        <div class="dropdown-menu p-3" style="width: 280px;">
+          <div class="mb-3">
+            <label class="form-label" for="system-users-filter-status">Status</label>
+            <select id="system-users-filter-status" name="is_active" class="form-select" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="1" @selected($isActive === 1)>Active</option>
+              <option value="0" @selected($isActive === 0)>Inactive</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="system-users-filter-role">Role</label>
+            <select id="system-users-filter-role" name="role" class="form-select" aria-label="Filter by role">
+              <option value="">All roles</option>
+              <option value="super" @selected($role === 'super')>Super Admin</option>
+              @foreach ($roles as $roleOption)
+                <option value="{{ $roleOption->id }}" @selected($role === (int) $roleOption->id)>{{ $roleOption->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="system-users-filter-created-from">Created from</label>
+            <input type="date" id="system-users-filter-created-from" name="created_from" value="{{ $createdFrom }}" class="form-control" aria-label="Filter by created from date">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="system-users-filter-created-to">Created to</label>
+            <input type="date" id="system-users-filter-created-to" name="created_to" value="{{ $createdTo }}" class="form-control" aria-label="Filter by created to date">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+          <a href="{{ route('admin.system.users.index', [], false) }}" class="btn btn-link w-100">Clear filters</a>
+        </div>
+      </div>
+    </form>
+    @can('system.users.create')
+      <a href="{{ route('admin.system.users.create') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+          <path d="M12 5l0 14" />
+          <path d="M5 12l14 0" />
+        </svg>
+        Create user
+      </a>
+    @endcan
+  </div>
 @endsection
 
 @section('content')
   <x-admin-data-table
     id="admin-system-users-table"
     title="Team user list"
-    subtitle="Client-side search, sort, and pagination. TODO: move to server-side mode when this list grows large."
+    subtitle="Search runs server-side; sort and pagination stay client-side. TODO: move to server-side mode when this list grows large."
     empty="No users found."
     :empty-colspan="6"
     :value-names="['sort-name', 'sort-email', 'sort-roles', 'sort-status', ['name' => 'sort-last-login', 'attr' => 'data-date']]"
-    searchable
     paginated
     :page="10"
-    search-placeholder="Search users..."
   >
     <x-slot:head>
       <tr>

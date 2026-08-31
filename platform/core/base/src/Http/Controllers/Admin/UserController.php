@@ -6,25 +6,45 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Sitewyn\Core\Base\Http\Requests\Admin\StoreUserRequest;
 use Sitewyn\Core\Base\Http\Requests\Admin\UpdateUserRequest;
+use Sitewyn\Core\Base\Support\DateFilter;
 
 class UserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->query('q', ''));
+        $isActive = $this->activeFilter($request->query('is_active'));
+        $createdFrom = $this->dateFilter($request->query('created_from'));
+        $createdTo = $this->dateFilter($request->query('created_to'));
+
         // Outside user management: this surface lists every account that is
         // NOT part of the platform team — not a super admin and no built-in
         // Admin role (negation of User::isTeamMember()). Team members are
         // managed at /admin/system/users (SystemUserController).
+        $users = User::query()
+            ->where('is_super_admin', false)
+            ->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('slug', 'admin'))
+            ->when($search !== '', fn (Builder $query) => $query->where(
+                fn (Builder $query) => $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+            ))
+            ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive))
+            ->when($createdFrom !== null, fn (Builder $query) => $query->whereDate('created_at', '>=', $createdFrom))
+            ->when($createdTo !== null, fn (Builder $query) => $query->whereDate('created_at', '<=', $createdTo))
+            ->orderBy('name')
+            ->get();
+
         return view('core/base::admin.users.index', [
-            'users' => User::query()
-                ->where('is_super_admin', false)
-                ->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('slug', 'admin'))
-                ->orderBy('name')
-                ->get(),
+            'users' => $users,
+            'search' => $search,
+            'isActive' => $isActive,
+            'createdFrom' => $createdFrom,
+            'createdTo' => $createdTo,
         ]);
     }
 
@@ -124,6 +144,24 @@ class UserController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * The status select submits `0`/`1` strings; anything else counts as no
+     * filter so crafted query input never changes the listing semantics.
+     */
+    private function activeFilter(mixed $isActive): ?int
+    {
+        return in_array($isActive, ['0', '1'], true) ? (int) $isActive : null;
+    }
+
+    /**
+     * Query input can be an array (e.g. ?created_from[]=1); narrow it to a
+     * string before the shared parser so bad input counts as no filter.
+     */
+    private function dateFilter(mixed $date): ?string
+    {
+        return DateFilter::parse(is_string($date) ? $date : null);
     }
 
     private function isEditingSelf(User $user): bool
