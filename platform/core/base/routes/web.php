@@ -11,6 +11,7 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PluginManageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SearchController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SettingController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\UserController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\WidgetController;
@@ -43,6 +44,7 @@ Route::prefix('admin')
 
         Route::middleware('auth:admin')->group(function (): void {
             Route::get('/', DashboardController::class)->name('dashboard');
+            Route::get('search', SearchController::class)->name('search');
             Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
             Route::get('roles', [RoleController::class, 'index'])
