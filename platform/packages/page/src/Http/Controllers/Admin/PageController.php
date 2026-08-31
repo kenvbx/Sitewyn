@@ -96,6 +96,33 @@ class PageController extends Controller
             ->route('admin.pages.index');
     }
 
+    public function bulkDelete(Request $request): RedirectResponse
+    {
+        $ids = collect((array) $request->input('ids', []))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            admin_flash()->warning(__('Select at least one page to delete.'));
+
+            return redirect()
+                ->route('admin.pages.index');
+        }
+
+        $pages = Page::query()->whereIn('id', $ids)->get();
+
+        foreach ($pages as $page) {
+            $this->pages->delete($page);
+        }
+
+        admin_flash()->success(__('Deleted :count pages.', ['count' => $pages->count()]));
+
+        return redirect()
+            ->route('admin.pages.index');
+    }
+
     public function preview(Page $page): View
     {
         return view('package/page::preview', [

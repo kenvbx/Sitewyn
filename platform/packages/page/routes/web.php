@@ -34,6 +34,9 @@ Route::prefix('admin')
         Route::delete('pages/{page}', [PageController::class, 'destroy'])
             ->name('pages.destroy')
             ->middleware('permission:page.delete');
+        Route::post('pages/bulk-delete', [PageController::class, 'bulkDelete'])
+            ->name('pages.bulkDelete')
+            ->middleware('permission:page.delete');
     });
 
 // Localized page detail (P5-01): /{locale}/{slug} reuses the default

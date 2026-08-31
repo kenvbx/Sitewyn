@@ -14,6 +14,21 @@
 
 @section('page-actions')
   <div class="btn-list">
+    @if ($page->status === 'published')
+      <a href="{{ url('/'.$page->slug) }}" target="_blank" rel="noopener" class="btn" aria-label="View page on the site">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+          <path d="M2 8a4 4 0 0 1 4 -4h2" />
+          <path d="M2 12a6 6 0 0 1 6 -6h.5" />
+          <path d="M14.09 17.072l-.637 -.378" />
+          <path d="M10.648 16.117l-.636 -.377" />
+          <path d="M17.533 16.35l-.636 -.378" />
+          <path d="M10 11l0 2" />
+          <path d="M14 11l0 2" />
+          <path d="M22 12c-1.946 3.68 -5.034 6 -10 6c-4.966 0 -8.054 -2.32 -10 -6c1.946 -3.68 5.034 -6 10 -6c4.966 0 8.054 2.32 10 6z" />
+        </svg>
+        View page
+      </a>
+    @endif
     @can('page.index')
       <a href="{{ route('admin.pages.preview', $page) }}" target="_blank" rel="noopener" class="btn">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">

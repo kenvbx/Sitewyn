@@ -423,6 +423,91 @@ class AdminPageCrudTest extends TestCase
             ->assertDontSee('PREVIEW — DRAFT');
     }
 
+    public function test_super_admin_can_bulk_delete_pages(): void
+    {
+        $admin = $this->adminUser();
+        $first = $this->createPage(['title' => 'First page', 'slug' => 'first-page']);
+        $second = $this->createPage(['title' => 'Second page', 'slug' => 'second-page']);
+        $kept = $this->createPage(['title' => 'Kept page', 'slug' => 'kept-page']);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/pages/bulk-delete', [
+                'ids' => [$first->id, $second->id],
+            ])
+            ->assertRedirect('/admin/pages')
+            ->assertSessionHas('status', 'Deleted 2 pages.');
+
+        $this->assertDatabaseMissing('pages', ['id' => $first->id]);
+        $this->assertDatabaseMissing('pages', ['id' => $second->id]);
+        $this->assertDatabaseHas('pages', ['id' => $kept->id]);
+    }
+
+    public function test_bulk_delete_requires_page_delete_permission(): void
+    {
+        $page = $this->createPage(['title' => 'First page', 'slug' => 'first-page']);
+
+        $this->post('/admin/pages/bulk-delete', ['ids' => [$page->id]])
+            ->assertRedirect('/admin/login');
+
+        $this->actingAs($this->plainAdmin(), 'admin')
+            ->post('/admin/pages/bulk-delete', ['ids' => [$page->id]])
+            ->assertForbidden();
+
+        $this->actingAs($this->userWithPermissions(['page.index']), 'admin')
+            ->post('/admin/pages/bulk-delete', ['ids' => [$page->id]])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('pages', ['id' => $page->id]);
+    }
+
+    public function test_bulk_delete_without_selection_flashes_warning(): void
+    {
+        $admin = $this->adminUser();
+        $page = $this->createPage(['title' => 'First page', 'slug' => 'first-page']);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/pages/bulk-delete', [])
+            ->assertRedirect('/admin/pages')
+            ->assertSessionHas('status', 'Select at least one page to delete.');
+
+        $this->assertDatabaseHas('pages', ['id' => $page->id]);
+    }
+
+    public function test_pages_index_renders_created_column_and_public_slug(): void
+    {
+        $admin = $this->adminUser();
+        $page = $this->createPage(['title' => 'First page', 'slug' => 'first-page']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages')
+            ->assertOk()
+            ->assertSee('<th>Created</th>', false)
+            ->assertSee($page->created_at->format('d M Y'))
+            ->assertSee('<span class="font-monospace text-secondary small">/first-page</span>', false);
+    }
+
+    public function test_page_edit_page_shows_view_page_link_only_for_published_pages(): void
+    {
+        $admin = $this->adminUser();
+        $published = $this->createPage([
+            'title' => 'About us',
+            'slug' => 'about-us',
+            'status' => Page::STATUS_PUBLISHED,
+        ]);
+        $draft = $this->createPage(['title' => 'Coming soon', 'slug' => 'coming-soon']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages/'.$published->id.'/edit')
+            ->assertOk()
+            ->assertSee('View page')
+            ->assertSee('/about-us', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pages/'.$draft->id.'/edit')
+            ->assertOk()
+            ->assertDontSee('View page');
+    }
+
     private function createPage(array $attributes = []): Page
     {
         return Page::query()->create([

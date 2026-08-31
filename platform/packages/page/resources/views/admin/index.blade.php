@@ -11,6 +11,11 @@
   <li class="breadcrumb-item active" aria-current="page">Pages</li>
 @endsection
 
+@php
+  $canBulkDelete = auth('admin')->user()?->can('page.delete') ?? false;
+  $colspan = $canBulkDelete ? 7 : 6;
+@endphp
+
 @section('page-actions')
   <div class="btn-list">
     <form action="{{ route('admin.pages.index', [], false) }}" method="get" class="d-flex gap-2">
@@ -31,6 +36,16 @@
       </select>
       <button type="submit" class="btn">Search</button>
     </form>
+    @if ($canBulkDelete)
+      <div class="dropdown">
+        <button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Bulk actions">
+          Bulk actions
+        </button>
+        <div class="dropdown-menu">
+          <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pages-bulk-delete">Delete selected</button>
+        </div>
+      </div>
+    @endif
     @can('page.create')
       <a href="{{ route('admin.pages.create') }}" class="btn btn-primary">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
@@ -49,13 +64,19 @@
     title="Page list"
     subtitle="Static pages are visible on the site only after they are published."
     empty="No pages found."
-    :empty-colspan="5"
+    :empty-colspan="$colspan"
   >
     <x-slot:head>
       <tr>
+        @if ($canBulkDelete)
+          <th class="w-1">
+            <input type="checkbox" class="form-check-input m-0" aria-label="Select all pages" data-page-bulk-select-all>
+          </th>
+        @endif
         <th>Title</th>
         <th>Slug</th>
         <th>Status</th>
+        <th>Created</th>
         <th>Updated</th>
         <th class="w-1"></th>
       </tr>
@@ -63,8 +84,13 @@
 
     @forelse ($pages as $page)
       <tr>
+        @if ($canBulkDelete)
+          <td class="w-1">
+            <input type="checkbox" class="form-check-input m-0" name="ids[]" value="{{ $page->id }}" form="admin-pages-bulk-delete-form" aria-label="Select page {{ $page->title }}">
+          </td>
+        @endif
         <td class="fw-medium">{{ $page->title }}</td>
-        <td><code>{{ $page->slug }}</code></td>
+        <td><span class="font-monospace text-secondary small">/{{ $page->slug }}</span></td>
         <td>
           @if ($page->status === 'published')
             <span class="badge bg-green-lt">Published</span>
@@ -72,6 +98,7 @@
             <span class="badge bg-secondary-lt">Draft</span>
           @endif
         </td>
+        <td class="text-secondary">{{ $page->created_at?->format('d M Y') }}</td>
         <td class="text-secondary">{{ $page->updated_at?->format('Y-m-d H:i') }}</td>
         <td>
           <div class="btn-list flex-nowrap">
@@ -100,7 +127,7 @@
       </tr>
     @empty
       <tr>
-        <td colspan="5" class="text-center text-secondary py-5">No pages found.</td>
+        <td colspan="{{ $colspan }}" class="text-center text-secondary py-5">No pages found.</td>
       </tr>
     @endforelse
   </x-admin-data-table>
@@ -122,4 +149,68 @@
       </x-admin-modal>
     @endcan
   @endforeach
+
+  @if ($canBulkDelete)
+    <x-admin-modal id="pages-bulk-delete" title="Delete selected pages">
+      <p>Delete <strong data-page-bulk-count>0</strong> selected pages?</p>
+      <p class="text-secondary mb-0">The pages and their slugs will be permanently removed.</p>
+      <form method="POST" action="{{ route('admin.pages.bulkDelete', [], false) }}" id="admin-pages-bulk-delete-form">
+        @csrf
+      </form>
+
+      <x-slot:footer>
+        <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger" form="admin-pages-bulk-delete-form">Delete selected</button>
+      </x-slot:footer>
+    </x-admin-modal>
+  @endif
 @endsection
+
+@if ($canBulkDelete)
+  @once
+    @push('scripts')
+      <script>
+        ;(function () {
+          var form = document.getElementById('admin-pages-bulk-delete-form')
+
+          if (! form) return
+
+          var selectAll = document.querySelector('[data-page-bulk-select-all]')
+          var count = document.querySelector('[data-page-bulk-count]')
+          var modal = document.getElementById('pages-bulk-delete')
+
+          function selected() {
+            return form.querySelectorAll('input[name="ids[]"]:checked')
+          }
+
+          if (selectAll) {
+            selectAll.addEventListener('change', function () {
+              form.querySelectorAll('input[name="ids[]"]').forEach(function (checkbox) {
+                checkbox.checked = selectAll.checked
+              })
+            })
+          }
+
+          if (modal) {
+            modal.addEventListener('show.bs.modal', function (event) {
+              var checked = selected()
+
+              // Nothing selected: skip the confirm modal and let the POST
+              // come back with a server-side warning flash instead.
+              if (checked.length === 0) {
+                event.preventDefault()
+                form.submit()
+
+                return
+              }
+
+              if (count) {
+                count.textContent = checked.length
+              }
+            })
+          }
+        })()
+      </script>
+    @endpush
+  @endonce
+@endif
