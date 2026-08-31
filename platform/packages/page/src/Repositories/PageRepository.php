@@ -40,11 +40,13 @@ class PageRepository
     /**
      * @return Collection<int, Page>
      */
-    public function search(string $term, ?string $status = null)
+    public function search(string $term, ?string $status = null, ?string $createdFrom = null, ?string $createdTo = null)
     {
         return Page::query()
             ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->where('title', 'like', '%'.$term.'%')
+            ->when($term !== '', fn ($query) => $query->where('title', 'like', '%'.$term.'%'))
+            ->when($createdFrom !== null, fn ($query) => $query->whereDate('created_at', '>=', $createdFrom))
+            ->when($createdTo !== null, fn ($query) => $query->whereDate('created_at', '<=', $createdTo))
             ->orderBy('title')
             ->get();
     }

@@ -51,12 +51,14 @@ class PostRepository
     /**
      * @return Collection<int, Post>
      */
-    public function search(string $term, ?string $status = null, ?int $categoryId = null)
+    public function search(string $term, ?string $status = null, ?int $categoryId = null, ?string $createdFrom = null, ?string $createdTo = null)
     {
         return Post::query()
             ->when($status !== null, fn ($query) => $query->where('status', $status))
             ->when($categoryId !== null, fn ($query) => $query->where('category_id', $categoryId))
-            ->where('title', 'like', '%'.$term.'%')
+            ->when($term !== '', fn ($query) => $query->where('title', 'like', '%'.$term.'%'))
+            ->when($createdFrom !== null, fn ($query) => $query->whereDate('created_at', '>=', $createdFrom))
+            ->when($createdTo !== null, fn ($query) => $query->whereDate('created_at', '<=', $createdTo))
             ->orderByDesc('id')
             ->get();
     }

@@ -29,16 +29,23 @@ class PostController extends Controller
         $search = trim((string) $request->query('q', ''));
         $status = $this->statusFilter($request->query('status'));
         $categoryId = $this->categoryFilter($request->query('category_id'));
+        $createdFrom = $this->dateFilter($request->query('created_from'));
+        $createdTo = $this->dateFilter($request->query('created_to'));
 
-        $posts = $search === '' && $status === null && $categoryId === null
-            ? $this->posts->all()
-            : $this->posts->search($search, $status, $categoryId);
+        $hasFilter = $search !== '' || $status !== null || $categoryId !== null
+            || $createdFrom !== null || $createdTo !== null;
+
+        $posts = $hasFilter
+            ? $this->posts->search($search, $status, $categoryId, $createdFrom, $createdTo)
+            : $this->posts->all();
 
         return view('package/blog::admin.index', [
             'posts' => $posts,
             'search' => $search,
             'status' => $status,
             'categoryId' => $categoryId,
+            'createdFrom' => $createdFrom,
+            'createdTo' => $createdTo,
             'categories' => $this->categories->all(),
         ]);
     }
@@ -186,6 +193,23 @@ class PostController extends Controller
         $status = is_string($status) ? trim($status) : '';
 
         return in_array($status, [Post::STATUS_DRAFT, Post::STATUS_PUBLISHED], true) ? $status : null;
+    }
+
+    /**
+     * Accept only strict Y-m-d dates so arbitrary query input never reaches
+     * whereDate(); anything else counts as no filter.
+     */
+    private function dateFilter(mixed $date): ?string
+    {
+        $date = is_string($date) ? trim($date) : '';
+
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $date));
+
+        return checkdate($month, $day, $year) ? $date : null;
     }
 
     /**

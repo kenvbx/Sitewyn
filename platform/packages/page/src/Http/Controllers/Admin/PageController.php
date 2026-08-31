@@ -23,15 +23,21 @@ class PageController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
         $status = $this->statusFilter($request->query('status'));
+        $createdFrom = $this->dateFilter($request->query('created_from'));
+        $createdTo = $this->dateFilter($request->query('created_to'));
 
-        $pages = $search === '' && $status === null
-            ? $this->pages->all()
-            : $this->pages->search($search, $status);
+        $hasFilter = $search !== '' || $status !== null || $createdFrom !== null || $createdTo !== null;
+
+        $pages = $hasFilter
+            ? $this->pages->search($search, $status, $createdFrom, $createdTo)
+            : $this->pages->all();
 
         return view('package/page::admin.index', [
             'pages' => $pages,
             'search' => $search,
             'status' => $status,
+            'createdFrom' => $createdFrom,
+            'createdTo' => $createdTo,
         ]);
     }
 
@@ -135,6 +141,23 @@ class PageController extends Controller
         $status = is_string($status) ? trim($status) : '';
 
         return in_array($status, [Page::STATUS_DRAFT, Page::STATUS_PUBLISHED], true) ? $status : null;
+    }
+
+    /**
+     * Accept only strict Y-m-d dates so arbitrary query input never reaches
+     * whereDate(); anything else counts as no filter.
+     */
+    private function dateFilter(mixed $date): ?string
+    {
+        $date = is_string($date) ? trim($date) : '';
+
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $date));
+
+        return checkdate($month, $day, $year) ? $date : null;
     }
 
     /**

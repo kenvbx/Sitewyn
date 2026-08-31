@@ -14,11 +14,13 @@
 @php
   $canBulkDelete = auth('admin')->user()?->can('post.delete') ?? false;
   $colspan = $canBulkDelete ? 8 : 7;
+  $activeFilterCount = ($status !== null ? 1 : 0) + ($categoryId !== null ? 1 : 0)
+    + ($createdFrom !== null ? 1 : 0) + ($createdTo !== null ? 1 : 0);
 @endphp
 
 @section('page-actions')
   <div class="btn-list">
-    <form action="{{ route('admin.posts.index', [], false) }}" method="get" class="d-flex gap-2">
+    <form action="{{ route('admin.posts.index', [], false) }}" method="get" class="d-flex gap-2" aria-label="Search and filter posts">
       <div class="input-icon">
         <span class="input-icon-addon">
           <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -29,18 +31,47 @@
         </span>
         <input type="search" name="q" value="{{ $search }}" class="form-control" placeholder="Search posts..." aria-label="Search posts">
       </div>
-      <select name="status" class="form-select w-auto" aria-label="Filter by status">
-        <option value="">All statuses</option>
-        <option value="draft" @selected($status === 'draft')>Draft</option>
-        <option value="published" @selected($status === 'published')>Published</option>
-      </select>
-      <select name="category_id" class="form-select w-auto" aria-label="Filter by category">
-        <option value="">All categories</option>
-        @foreach ($categories as $category)
-          <option value="{{ $category->id }}" @selected($categoryId === (int) $category->id)>{{ $category->name }}</option>
-        @endforeach
-      </select>
       <button type="submit" class="btn">Search</button>
+      <div class="dropdown">
+        <button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Filter posts">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">
+            <path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.414 -4.414a2 2 0 0 1 -.586 -1.414v-2.172z" />
+          </svg>
+          Filters
+          @if ($activeFilterCount > 0)
+            <span class="badge bg-blue-lt">{{ $activeFilterCount }}</span>
+          @endif
+        </button>
+        <div class="dropdown-menu p-3" style="width: 280px;">
+          <div class="mb-3">
+            <label class="form-label" for="posts-filter-status">Status</label>
+            <select id="posts-filter-status" name="status" class="form-select" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="draft" @selected($status === 'draft')>Draft</option>
+              <option value="published" @selected($status === 'published')>Published</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="posts-filter-category">Category</label>
+            <select id="posts-filter-category" name="category_id" class="form-select" aria-label="Filter by category">
+              <option value="">All categories</option>
+              @foreach ($categories as $category)
+                <option value="{{ $category->id }}" @selected($categoryId === (int) $category->id)>{{ $category->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="posts-filter-created-from">Created from</label>
+            <input type="date" id="posts-filter-created-from" name="created_from" value="{{ $createdFrom }}" class="form-control" aria-label="Filter by created from date">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="posts-filter-created-to">Created to</label>
+            <input type="date" id="posts-filter-created-to" name="created_to" value="{{ $createdTo }}" class="form-control" aria-label="Filter by created to date">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+          <a href="{{ route('admin.posts.index', [], false) }}" class="btn btn-link w-100">Clear filters</a>
+        </div>
+      </div>
     </form>
     @if ($canBulkDelete)
       <div class="dropdown">
