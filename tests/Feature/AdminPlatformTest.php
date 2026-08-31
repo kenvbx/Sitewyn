@@ -25,7 +25,7 @@ class AdminPlatformTest extends TestCase
         $this->get('/admin/system')->assertRedirect('/admin/login');
     }
 
-    public function test_super_admin_sees_all_ten_tool_cards(): void
+    public function test_super_admin_sees_all_eleven_tool_cards(): void
     {
         $content = $this->actingAs($this->adminUser(), 'admin')
             ->get('/admin/system')
@@ -34,6 +34,7 @@ class AdminPlatformTest extends TestCase
 
         foreach ([
             'View and update your system users.',
+            'Manage non-team member accounts.',
             'View and update your roles and permissions.',
             'Browse every registered permission by module.',
             'Manage your media library files and folders.',
@@ -47,22 +48,37 @@ class AdminPlatformTest extends TestCase
             $this->assertStringContainsString($description, $content);
         }
 
-        $this->assertSame(10, substr_count($content, 'data-platform-card="'));
+        $this->assertSame(11, substr_count($content, 'data-platform-card="'));
+    }
+
+    public function test_users_card_links_to_the_team_surface(): void
+    {
+        $content = $this->actingAs($this->adminUser(), 'admin')
+            ->get('/admin/system')
+            ->assertOk()
+            ->getContent();
+
+        // Card URLs are rendered verbatim (no route() helper).
+        $this->assertStringContainsString('href="/admin/system/users"', $content);
+        $this->assertStringContainsString('href="/admin/users"', $content);
     }
 
     /**
      * Team gating: the Users card no longer follows the users.index
      * permission — it only shows to team members, and a users.index-only
-     * admin is not one, so they see the empty state instead.
+     * admin is not one. They do see the new Members card, which gates on
+     * users.index and links to /admin/users.
      */
-    public function test_user_with_users_index_does_not_see_the_users_card(): void
+    public function test_user_with_users_index_only_sees_the_members_card(): void
     {
-        $this->actingAs($this->userWithPermissions(['users.index']), 'admin')
+        $content = $this->actingAs($this->userWithPermissions(['users.index']), 'admin')
             ->get('/admin/system')
             ->assertOk()
-            ->assertSee('No administration tools available for your account.')
-            ->assertDontSee('View and update your system users.')
-            ->assertDontSee('data-platform-card="', false);
+            ->getContent();
+
+        $this->assertStringNotContainsString('View and update your system users.', $content);
+        $this->assertStringContainsString('Manage non-team member accounts.', $content);
+        $this->assertSame(1, substr_count($content, 'data-platform-card="'));
     }
 
     public function test_user_with_the_admin_role_sees_the_users_card(): void

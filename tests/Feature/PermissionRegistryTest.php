@@ -19,6 +19,10 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('users.create'));
         $this->assertTrue($registry->has('users.edit'));
         $this->assertTrue($registry->has('users.delete'));
+        $this->assertTrue($registry->has('system.users.index'));
+        $this->assertTrue($registry->has('system.users.create'));
+        $this->assertTrue($registry->has('system.users.edit'));
+        $this->assertTrue($registry->has('system.users.delete'));
         $this->assertTrue($registry->has('roles.index'));
         $this->assertTrue($registry->has('roles.create'));
         $this->assertTrue($registry->has('roles.edit'));
@@ -50,8 +54,8 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('tag.delete'));
         $this->assertTrue($registry->has('menus.manage'));
         $this->assertTrue($registry->has('widgets.manage'));
-        $this->assertSame(35, $registry->all()->count());
-        $this->assertSame(['audit', 'backups', 'category', 'media', 'menus', 'page', 'permissions', 'plugins', 'post', 'roles', 'settings', 'tag', 'users', 'widgets'], $registry->grouped()->keys()->sort()->values()->all());
+        $this->assertSame(39, $registry->all()->count());
+        $this->assertSame(['audit', 'backups', 'category', 'media', 'menus', 'page', 'permissions', 'plugins', 'post', 'roles', 'settings', 'system users', 'tag', 'users', 'widgets'], $registry->grouped()->keys()->sort()->values()->all());
     }
 
     public function test_permission_sync_command_persists_registered_permissions(): void
@@ -65,16 +69,23 @@ class PermissionRegistryTest extends TestCase
         ]);
 
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 35 permissions.')
+            ->expectsOutputToContain('Synced 39 permissions.')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('permissions', 35);
+        $this->assertDatabaseCount('permissions', 39);
         $this->assertDatabaseHas('permissions', [
             'name' => 'View users',
             'key' => 'users.index',
             'module' => 'core/base',
             'group' => 'users',
             'description' => 'View admin user list.',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'View team users',
+            'key' => 'system.users.index',
+            'module' => 'core/base',
+            'group' => 'system users',
+            'description' => 'View the platform team user list.',
         ]);
         $this->assertDatabaseHas('permissions', [
             'key' => 'roles.delete',

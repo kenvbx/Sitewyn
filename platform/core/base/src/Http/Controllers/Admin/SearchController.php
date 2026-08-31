@@ -115,19 +115,22 @@ class SearchController extends Controller
 
     private function usersGroup(string $query, User $user): ?array
     {
-        if (! Route::has('admin.users.edit') || ! $this->allowed($user, 'users.index')) {
+        if (! Route::has('admin.users.edit') || ! Route::has('admin.system.users.edit') || ! $this->allowed($user, 'users.index')) {
             return null;
         }
 
-        // Only id/name/email are selected — credentials never leave the model.
+        // Only id/name/email/is_super_admin are selected — credentials never
+        // leave the model. is_super_admin is needed by isTeamMember() to
+        // route team members to the team surface.
         $users = User::query()
             ->where(fn ($builder) => $builder
                 ->where('name', 'like', '%'.$query.'%')
                 ->orWhere('email', 'like', '%'.$query.'%'))
             ->orderBy('name')
             ->orderBy('id')
+            ->with('roles')
             ->limit(self::LIMIT_PER_GROUP)
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'is_super_admin']);
 
         if ($users->isEmpty()) {
             return null;
@@ -136,7 +139,16 @@ class SearchController extends Controller
         return [
             'label' => 'Users',
             'items' => $users
-                ->map(fn (User $found): array => $this->item($found->name, route('admin.users.edit', ['user' => $found->id], false), 'users'))
+                ->map(fn (User $found): array => $this->item(
+                    $found->name,
+                    // Route by the target's team membership: team members are
+                    // edited at /admin/system/users, everyone else at
+                    // /admin/users (the two user surfaces).
+                    $found->isTeamMember()
+                        ? route('admin.system.users.edit', ['user' => $found->id], false)
+                        : route('admin.users.edit', ['user' => $found->id], false),
+                    'users',
+                ))
                 ->all(),
         ];
     }

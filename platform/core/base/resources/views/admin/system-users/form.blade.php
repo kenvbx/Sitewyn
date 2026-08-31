@@ -15,7 +15,7 @@
     </x-admin-card>
   </div>
   <div class="col-lg-7">
-    <x-admin-card title="Account status">
+    <x-admin-card title="Account status" class="mb-3">
       <label class="form-check form-switch">
         <input class="form-check-input" type="checkbox" name="is_active" value="1" @checked((bool) old('is_active', $user->exists ? $user->is_active : true)) @disabled($user->exists && auth('admin')->id() === $user->id) />
         <span class="form-check-label">Active account</span>
@@ -24,7 +24,37 @@
         <input type="hidden" name="is_active" value="1" />
         <div class="form-hint">You cannot lock your own account.</div>
       @endif
-      <div class="form-hint mt-3">Members created here are not part of the platform team and hold no admin privileges. Team accounts are managed under Platform Administration → Team users.</div>
+      @if (auth('admin')->user()->is_super_admin)
+        <label class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" name="is_super_admin" value="1" @checked((bool) old('is_super_admin', $user->is_super_admin)) />
+          <span class="form-check-label">Super Admin</span>
+        </label>
+      @endif
+    </x-admin-card>
+    <x-admin-card title="Roles">
+      @error('roles')
+        <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
+      @enderror
+      <div class="divide-y">
+        @forelse ($roles as $role)
+          <label class="row">
+            <span class="col">
+              <span class="form-label mb-0">{{ $role->name }}</span>
+              <span class="form-hint"><code>{{ $role->slug }}</code>{{ $role->description ? ' - ' . $role->description : '' }}</span>
+            </span>
+            <span class="col-auto">
+              <label class="form-check form-check-single form-switch">
+                <input class="form-check-input" type="checkbox" name="roles[]" value="{{ $role->id }}" @checked(in_array($role->id, old('roles', $selectedRoles), false)) />
+              </label>
+            </span>
+          </label>
+        @empty
+          <div class="empty">
+            <p class="empty-title">No roles found</p>
+            <p class="empty-subtitle text-secondary">Create roles before assigning them to admin users.</p>
+          </div>
+        @endforelse
+      </div>
     </x-admin-card>
   </div>
 </div>

@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateUserRequest extends FormRequest
+class UpdateTeamUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,10 +14,8 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
-     * Outside user updates on /admin/users. Roles and the super admin flag
-     * are deliberately not accepted here — users managed on this surface can
-     * never gain admin privileges; promote them at /admin/system/users
-     * (UpdateTeamUserRequest) instead.
+     * Team user updates on /admin/system/users: the only surface that
+     * accepts roles and the super admin flag.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -32,6 +30,9 @@ class UpdateUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
+            'is_super_admin' => ['nullable', 'boolean'],
+            'roles' => ['array'],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')],
         ];
     }
 }

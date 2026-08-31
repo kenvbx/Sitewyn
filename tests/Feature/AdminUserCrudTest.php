@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Sitewyn\Core\Base\Models\Permission;
 use Sitewyn\Core\Base\Models\Role;
 use Tests\TestCase;
 
@@ -30,34 +31,50 @@ class AdminUserCrudTest extends TestCase
             'is_super_admin' => true,
             'is_active' => true,
         ]);
-        // Only team members are listed on /admin/users (super admins and
-        // Admin-role holders), so the other visible user needs the Admin role.
-        $adminRole = Role::factory()->system()->create([
-            'name' => 'Admin',
-            'slug' => 'admin',
+        // /admin/users lists outside users only (not super admins, no built-in
+        // Admin role), so the visible user is a plain account. The super admin
+        // actor and Admin-role holders belong to /admin/system/users.
+        $member = User::factory()->create([
+            'name' => 'Member User',
+            'email' => 'member@example.com',
         ]);
-        $editor = User::factory()->create([
-            'name' => 'Editor User',
-            'email' => 'editor@example.com',
-        ]);
-        $editor->roles()->attach($adminRole);
 
         $this->actingAs($admin, 'admin')
             ->get('/admin/users')
             ->assertOk()
             ->assertSee('Users')
-            ->assertSee('Editor User')
-            ->assertSee('editor@example.com');
+            ->assertSee('Member User')
+            ->assertSee('member@example.com');
     }
 
-    public function test_super_admin_can_create_user_with_roles(): void
+    public function test_outside_index_does_not_list_team_members(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,
             'is_active' => true,
         ]);
-        $role = Role::factory()->create([
-            'name' => 'Editor',
+        $teamRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $teamMember = User::factory()->create([
+            'name' => 'Team Member',
+            'email' => 'team-member@example.com',
+        ]);
+        $teamMember->roles()->attach($teamRole);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users')
+            ->assertOk()
+            ->assertDontSee('Team Member')
+            ->assertDontSee('team-member@example.com');
+    }
+
+    public function test_super_admin_can_create_outside_user(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
         ]);
 
         $this->actingAs($admin, 'admin')
@@ -68,7 +85,6 @@ class AdminUserCrudTest extends TestCase
                 'password' => 'secret-password',
                 'password_confirmation' => 'secret-password',
                 'is_active' => '1',
-                'roles' => [$role->id],
             ])
             ->assertRedirect('/admin/users');
 
@@ -79,17 +95,72 @@ class AdminUserCrudTest extends TestCase
         $this->assertTrue($user->is_active);
         $this->assertFalse($user->is_super_admin);
         $this->assertTrue(Hash::check('secret-password', $user->password));
-        $this->assertSame([$role->id], $user->roles()->pluck('roles.id')->all());
+        $this->assertSame([], $user->roles()->pluck('roles.id')->all());
+        $this->assertFalse($user->isTeamMember());
     }
 
-    public function test_super_admin_can_update_user_profile_roles_status_and_password(): void
+    public function test_outside_store_ignores_roles_and_super_admin_payload(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,
             'is_active' => true,
         ]);
-        $oldRole = Role::factory()->create();
-        $newRole = Role::factory()->create();
+        $role = Role::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/users', [
+                'name' => 'Sneaky Payload',
+                'email' => 'sneaky-payload@example.com',
+                'password' => 'secret-password',
+                'password_confirmation' => 'secret-password',
+                'is_active' => '1',
+                'is_super_admin' => '1',
+                'roles' => [$role->id],
+            ])
+            ->assertRedirect('/admin/users')
+            ->assertSessionHasNoErrors();
+
+        $user = User::query()->where('email', 'sneaky-payload@example.com')->firstOrFail();
+
+        $this->assertFalse($user->is_super_admin);
+        $this->assertSame([], $user->roles()->pluck('roles.id')->all());
+    }
+
+    public function test_created_outside_user_appears_outside_but_not_in_system_list(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/users', [
+                'name' => 'Outside Only',
+                'email' => 'outside-only@example.com',
+                'password' => 'secret-password',
+                'password_confirmation' => 'secret-password',
+                'is_active' => '1',
+            ])
+            ->assertRedirect('/admin/users');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users')
+            ->assertOk()
+            ->assertSee('Outside Only');
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/system/users')
+            ->assertOk()
+            ->assertDontSee('Outside Only');
+    }
+
+    public function test_super_admin_can_update_outside_user_profile_status_and_password(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $role = Role::factory()->create();
         $user = User::factory()->create([
             'name' => 'Old User',
             'username' => 'old-user',
@@ -99,8 +170,6 @@ class AdminUserCrudTest extends TestCase
             'is_super_admin' => false,
         ]);
 
-        $user->roles()->attach($oldRole);
-
         $this->actingAs($admin, 'admin')
             ->put("/admin/users/{$user->id}", [
                 'name' => 'Updated User',
@@ -109,9 +178,10 @@ class AdminUserCrudTest extends TestCase
                 'password' => 'new-password',
                 'password_confirmation' => 'new-password',
                 'is_super_admin' => '1',
-                'roles' => [$newRole->id],
+                'roles' => [$role->id],
             ])
-            ->assertRedirect("/admin/users/{$user->id}/edit");
+            ->assertRedirect("/admin/users/{$user->id}/edit")
+            ->assertSessionHasNoErrors();
 
         $user->refresh();
 
@@ -119,9 +189,10 @@ class AdminUserCrudTest extends TestCase
         $this->assertSame('updated-user', $user->username);
         $this->assertSame('updated@example.com', $user->email);
         $this->assertFalse($user->is_active);
-        $this->assertTrue($user->is_super_admin);
+        // Privilege fields are ignored on the outside surface.
+        $this->assertFalse($user->is_super_admin);
+        $this->assertSame([], $user->roles()->pluck('roles.id')->all());
         $this->assertTrue(Hash::check('new-password', $user->password));
-        $this->assertSame([$newRole->id], $user->roles()->pluck('roles.id')->all());
     }
 
     public function test_update_user_keeps_password_when_blank(): void
@@ -167,24 +238,67 @@ class AdminUserCrudTest extends TestCase
             ->assertSessionHasErrors('email');
     }
 
-    public function test_admin_cannot_delete_own_account(): void
+    public function test_team_member_cannot_be_managed_through_the_outside_surface(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,
             'is_active' => true,
         ]);
+        $teamRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $teamMember = User::factory()->create(['is_active' => true]);
+        $teamMember->roles()->attach($teamRole);
 
         $this->actingAs($admin, 'admin')
-            ->delete("/admin/users/{$admin->id}")
+            ->get("/admin/users/{$teamMember->id}/edit")
+            ->assertNotFound();
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/users/{$teamMember->id}", [
+                'name' => 'Hijacked',
+                'email' => $teamMember->email,
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($admin, 'admin')
+            ->delete("/admin/users/{$teamMember->id}")
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $teamMember->id,
+        ]);
+        $this->assertFalse($teamMember->fresh()->is_super_admin);
+        $this->assertTrue($teamMember->fresh()->isTeamMember());
+    }
+
+    public function test_outside_user_cannot_delete_own_account(): void
+    {
+        $role = Role::factory()->create();
+        $permission = Permission::query()->firstOrCreate(
+            ['key' => 'users.delete'],
+            ['name' => 'users.delete', 'module' => 'core/base', 'group' => 'users', 'description' => null],
+        );
+        $role->permissions()->attach($permission->id);
+
+        $outsider = User::factory()->create([
+            'is_super_admin' => false,
+            'is_active' => true,
+        ]);
+        $outsider->roles()->attach($role);
+
+        $this->actingAs($outsider, 'admin')
+            ->delete("/admin/users/{$outsider->id}")
             ->assertRedirect('/admin/users')
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('users', [
-            'id' => $admin->id,
+            'id' => $outsider->id,
         ]);
     }
 
-    public function test_super_admin_can_delete_another_user(): void
+    public function test_super_admin_can_delete_another_outside_user(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,

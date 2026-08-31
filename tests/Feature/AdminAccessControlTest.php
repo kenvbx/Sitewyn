@@ -103,6 +103,7 @@ class AdminAccessControlTest extends TestCase
         return [
             '/admin',
             '/admin/users',
+            '/admin/system/users',
             '/admin/roles',
             '/admin/permissions',
             '/admin/settings',
@@ -117,6 +118,7 @@ class AdminAccessControlTest extends TestCase
     {
         return [
             ['path' => '/admin/users', 'permission' => 'users.index'],
+            ['path' => '/admin/system/users', 'permission' => 'system.users.index'],
             ['path' => '/admin/roles', 'permission' => 'roles.index'],
             ['path' => '/admin/permissions', 'permission' => 'permissions.index'],
             ['path' => '/admin/settings', 'permission' => 'settings.edit'],

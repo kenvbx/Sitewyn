@@ -64,7 +64,8 @@ class AdminSearchTest extends TestCase
 
         $this->assertCount(1, $userItems);
         $this->assertSame('Hello Admin', $userItems[0]['title']);
-        $this->assertSame('/admin/users/'.$admin->id.'/edit', $userItems[0]['url']);
+        // Team members link to the team surface edit form.
+        $this->assertSame('/admin/system/users/'.$admin->id.'/edit', $userItems[0]['url']);
         $this->assertSame('users', $userItems[0]['icon']);
 
         // Credentials must never be part of the search payload.
@@ -91,6 +92,7 @@ class AdminSearchTest extends TestCase
 
         $this->assertCount(1, $userItems);
         $this->assertSame('Random Person', $userItems[0]['title']);
+        // Outside users link to the outside surface edit form.
         $this->assertSame('/admin/users/'.$found->id.'/edit', $userItems[0]['url']);
     }
 

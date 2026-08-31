@@ -54,4 +54,21 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserMeta::class);
     }
+
+    /**
+     * Team members manage the platform itself: super admins and anyone holding
+     * the built-in Admin role (slug `admin`, seeded by SuperAdminSeeder). Team
+     * accounts are managed at /admin/system/users (SystemUserController);
+     * every other account belongs to /admin/users (UserController).
+     */
+    public function isTeamMember(): bool
+    {
+        if ($this->is_super_admin) {
+            return true;
+        }
+
+        $this->loadMissing('roles');
+
+        return $this->roles->contains('slug', 'admin');
+    }
 }

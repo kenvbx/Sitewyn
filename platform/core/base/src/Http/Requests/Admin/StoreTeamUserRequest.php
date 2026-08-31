@@ -5,7 +5,7 @@ namespace Sitewyn\Core\Base\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreUserRequest extends FormRequest
+class StoreTeamUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -13,10 +13,8 @@ class StoreUserRequest extends FormRequest
     }
 
     /**
-     * Outside user creation on /admin/users. Roles and the super admin flag
-     * are deliberately not accepted here — users created on this surface can
-     * never hold admin privileges; promote them at /admin/system/users
-     * (StoreTeamUserRequest) instead.
+     * Team user creation on /admin/system/users: the only surface that
+     * accepts roles and the super admin flag.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -28,6 +26,9 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
+            'is_super_admin' => ['nullable', 'boolean'],
+            'roles' => ['array'],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')],
         ];
     }
 }

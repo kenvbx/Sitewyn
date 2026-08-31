@@ -14,6 +14,7 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\PluginManageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SearchController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SettingController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SystemUserController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\UserController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\WidgetController;
 use Sitewyn\Core\Base\Http\Controllers\RobotsController;
@@ -90,6 +91,31 @@ Route::prefix('admin')
             Route::delete('users/{user}', [UserController::class, 'destroy'])
                 ->middleware('permission:users.delete')
                 ->name('users.destroy');
+
+            // Team user management lives inside Platform Administration
+            // (/admin/system, hub card "Users"). These routes manage the
+            // platform team — super admins and holders of the built-in Admin
+            // role — while /admin/users manages everyone else. Escalation
+            // guards (self-edit strip, super-only flag, role subset rule)
+            // live in SystemUserController.
+            Route::get('system/users', [SystemUserController::class, 'index'])
+                ->middleware('permission:system.users.index')
+                ->name('system.users.index');
+            Route::get('system/users/create', [SystemUserController::class, 'create'])
+                ->middleware('permission:system.users.create')
+                ->name('system.users.create');
+            Route::post('system/users', [SystemUserController::class, 'store'])
+                ->middleware('permission:system.users.create')
+                ->name('system.users.store');
+            Route::get('system/users/{user}/edit', [SystemUserController::class, 'edit'])
+                ->middleware('permission:system.users.edit')
+                ->name('system.users.edit');
+            Route::put('system/users/{user}', [SystemUserController::class, 'update'])
+                ->middleware('permission:system.users.edit')
+                ->name('system.users.update');
+            Route::delete('system/users/{user}', [SystemUserController::class, 'destroy'])
+                ->middleware('permission:system.users.delete')
+                ->name('system.users.destroy');
 
             Route::get('permissions', [PermissionController::class, 'index'])
                 ->middleware('permission:permissions.index')

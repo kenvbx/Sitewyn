@@ -13,14 +13,20 @@ class AdminUserEscalationTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Escalation guards live on the team surface (/admin/system/users,
+    // SystemUserController) — the only surface that accepts roles and the
+    // super admin flag. The outside surface (/admin/users) cannot escalate
+    // because it ignores both fields entirely.
+    private const SURFACE = '/admin/system/users';
+
     public function test_admin_with_edit_permission_cannot_change_own_privileges(): void
     {
-        $editor = $this->userWithPermissions(['users.edit']);
+        $editor = $this->userWithPermissions(['system.users.edit']);
         $ownRole = $editor->roles()->first();
         $otherRole = Role::factory()->create();
 
         $this->actingAs($editor, 'admin')
-            ->put("/admin/users/{$editor->id}", [
+            ->put(self::SURFACE."/{$editor->id}", [
                 'name' => 'Renamed Editor',
                 'username' => 'renamed-editor',
                 'email' => $editor->email,
@@ -30,7 +36,7 @@ class AdminUserEscalationTest extends TestCase
                 'is_super_admin' => '1',
                 'roles' => [$otherRole->id],
             ])
-            ->assertRedirect("/admin/users/{$editor->id}/edit")
+            ->assertRedirect(self::SURFACE."/{$editor->id}/edit")
             ->assertSessionHasNoErrors();
 
         $editor->refresh();
@@ -53,12 +59,12 @@ class AdminUserEscalationTest extends TestCase
         $admin->roles()->attach($role);
 
         $this->actingAs($admin, 'admin')
-            ->put("/admin/users/{$admin->id}", [
+            ->put(self::SURFACE."/{$admin->id}", [
                 'name' => 'Still Super',
                 'username' => $admin->username,
                 'email' => $admin->email,
             ])
-            ->assertRedirect("/admin/users/{$admin->id}/edit")
+            ->assertRedirect(self::SURFACE."/{$admin->id}/edit")
             ->assertSessionHasNoErrors();
 
         $admin->refresh();
@@ -69,14 +75,14 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_non_super_admin_cannot_grant_the_super_admin_flag_on_update(): void
     {
-        $editor = $this->userWithPermissions(['users.edit']);
+        $editor = $this->userWithPermissions(['system.users.edit']);
         $target = User::factory()->create([
             'is_super_admin' => false,
             'is_active' => true,
         ]);
 
         $this->actingAs($editor, 'admin')
-            ->put("/admin/users/{$target->id}", [
+            ->put(self::SURFACE."/{$target->id}", [
                 'name' => $target->name,
                 'username' => $target->username,
                 'email' => $target->email,
@@ -93,10 +99,10 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_non_super_admin_cannot_grant_the_super_admin_flag_on_store(): void
     {
-        $editor = $this->userWithPermissions(['users.create']);
+        $editor = $this->userWithPermissions(['system.users.create']);
 
         $this->actingAs($editor, 'admin')
-            ->post('/admin/users', [
+            ->post(self::SURFACE, [
                 'name' => 'Escalated User',
                 'email' => 'escalated@example.com',
                 'password' => 'secret-password',
@@ -125,14 +131,14 @@ class AdminUserEscalationTest extends TestCase
         $role = Role::factory()->create();
 
         $this->actingAs($admin, 'admin')
-            ->put("/admin/users/{$target->id}", [
+            ->put(self::SURFACE."/{$target->id}", [
                 'name' => $target->name,
                 'username' => $target->username,
                 'email' => $target->email,
                 'is_super_admin' => '1',
                 'roles' => [$role->id],
             ])
-            ->assertRedirect("/admin/users/{$target->id}/edit")
+            ->assertRedirect(self::SURFACE."/{$target->id}/edit")
             ->assertSessionHasNoErrors();
 
         $target->refresh();
@@ -149,14 +155,14 @@ class AdminUserEscalationTest extends TestCase
         ]);
 
         $this->actingAs($admin, 'admin')
-            ->post('/admin/users', [
+            ->post(self::SURFACE, [
                 'name' => 'New Super',
                 'email' => 'new-super@example.com',
                 'password' => 'secret-password',
                 'password_confirmation' => 'secret-password',
                 'is_super_admin' => '1',
             ])
-            ->assertRedirect('/admin/users')
+            ->assertRedirect(self::SURFACE)
             ->assertSessionHasNoErrors();
 
         $this->assertTrue(
@@ -166,7 +172,7 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_non_super_admin_cannot_assign_a_role_with_permissions_they_do_not_have(): void
     {
-        $editor = $this->userWithPermissions(['users.edit']);
+        $editor = $this->userWithPermissions(['system.users.edit']);
         $target = User::factory()->create(['is_active' => true]);
         $currentRole = Role::factory()->create();
         $target->roles()->attach($currentRole);
@@ -175,7 +181,7 @@ class AdminUserEscalationTest extends TestCase
         $this->attachPermissions($forbiddenRole, ['users.edit', 'users.delete']);
 
         $this->actingAs($editor, 'admin')
-            ->put("/admin/users/{$target->id}", [
+            ->put(self::SURFACE."/{$target->id}", [
                 'name' => $target->name,
                 'username' => $target->username,
                 'email' => $target->email,
@@ -192,21 +198,21 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_non_super_admin_can_assign_roles_within_their_own_permissions(): void
     {
-        $editor = $this->userWithPermissions(['users.edit', 'users.create']);
+        $editor = $this->userWithPermissions(['system.users.edit', 'system.users.create']);
         $target = User::factory()->create(['is_active' => true]);
 
         $allowedRole = Role::factory()->create();
-        $this->attachPermissions($allowedRole, ['users.edit']);
+        $this->attachPermissions($allowedRole, ['system.users.edit']);
         $emptyRole = Role::factory()->create();
 
         $this->actingAs($editor, 'admin')
-            ->put("/admin/users/{$target->id}", [
+            ->put(self::SURFACE."/{$target->id}", [
                 'name' => $target->name,
                 'username' => $target->username,
                 'email' => $target->email,
                 'roles' => [$allowedRole->id, $emptyRole->id],
             ])
-            ->assertRedirect("/admin/users/{$target->id}/edit")
+            ->assertRedirect(self::SURFACE."/{$target->id}/edit")
             ->assertSessionHasNoErrors();
 
         $this->assertEqualsCanonicalizing(
@@ -217,12 +223,12 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_non_super_admin_cannot_assign_a_role_with_extra_permissions_on_store(): void
     {
-        $editor = $this->userWithPermissions(['users.create']);
+        $editor = $this->userWithPermissions(['system.users.create']);
         $forbiddenRole = Role::factory()->create();
         $this->attachPermissions($forbiddenRole, ['users.delete']);
 
         $this->actingAs($editor, 'admin')
-            ->post('/admin/users', [
+            ->post(self::SURFACE, [
                 'name' => 'Sneaky User',
                 'email' => 'sneaky@example.com',
                 'password' => 'secret-password',
@@ -240,10 +246,10 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_user_with_edit_permission_cannot_store_users_without_create_permission(): void
     {
-        $editor = $this->userWithPermissions(['users.edit']);
+        $editor = $this->userWithPermissions(['system.users.edit']);
 
         $this->actingAs($editor, 'admin')
-            ->post('/admin/users', [
+            ->post(self::SURFACE, [
                 'name' => 'Gate User',
                 'email' => 'gate@example.com',
                 'password' => 'secret-password',
@@ -256,14 +262,14 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_edit_form_hides_the_super_admin_toggle_and_filters_roles_for_non_super_admins(): void
     {
-        $editor = $this->userWithPermissions(['users.edit']);
+        $editor = $this->userWithPermissions(['system.users.edit']);
         $allowedRole = $editor->roles()->first();
         $forbiddenRole = Role::factory()->create(['name' => 'Forbidden Role']);
         $this->attachPermissions($forbiddenRole, ['users.delete']);
         $target = User::factory()->create(['is_active' => true]);
 
         $this->actingAs($editor, 'admin')
-            ->get("/admin/users/{$target->id}/edit")
+            ->get(self::SURFACE."/{$target->id}/edit")
             ->assertOk()
             ->assertDontSee('Super Admin')
             ->assertSee($allowedRole->name)
@@ -282,7 +288,7 @@ class AdminUserEscalationTest extends TestCase
         $target = User::factory()->create(['is_active' => true]);
 
         $this->actingAs($admin, 'admin')
-            ->get("/admin/users/{$target->id}/edit")
+            ->get(self::SURFACE."/{$target->id}/edit")
             ->assertOk()
             ->assertSee('Super Admin')
             ->assertSee('Allowed Role')
@@ -291,13 +297,13 @@ class AdminUserEscalationTest extends TestCase
 
     public function test_create_form_hides_the_super_admin_toggle_and_filters_roles_for_non_super_admins(): void
     {
-        $editor = $this->userWithPermissions(['users.create']);
+        $editor = $this->userWithPermissions(['system.users.create']);
         $allowedRole = $editor->roles()->first();
         $forbiddenRole = Role::factory()->create(['name' => 'Forbidden Role']);
         $this->attachPermissions($forbiddenRole, ['users.delete']);
 
         $this->actingAs($editor, 'admin')
-            ->get('/admin/users/create')
+            ->get(self::SURFACE.'/create')
             ->assertOk()
             ->assertDontSee('Super Admin')
             ->assertSee($allowedRole->name)

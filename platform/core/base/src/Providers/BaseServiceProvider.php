@@ -174,6 +174,30 @@ class BaseServiceProvider extends ServiceProvider
                 'description' => 'Delete admin users.',
             ],
             [
+                'key' => 'system.users.index',
+                'name' => 'View team users',
+                'group' => 'system users',
+                'description' => 'View the platform team user list.',
+            ],
+            [
+                'key' => 'system.users.create',
+                'name' => 'Create team users',
+                'group' => 'system users',
+                'description' => 'Create platform team users.',
+            ],
+            [
+                'key' => 'system.users.edit',
+                'name' => 'Edit team users',
+                'group' => 'system users',
+                'description' => 'Edit platform team users and account state.',
+            ],
+            [
+                'key' => 'system.users.delete',
+                'name' => 'Delete team users',
+                'group' => 'system users',
+                'description' => 'Delete platform team users.',
+            ],
+            [
                 'key' => 'roles.index',
                 'name' => 'View roles',
                 'group' => 'roles',
@@ -359,7 +383,7 @@ class BaseServiceProvider extends ServiceProvider
                 'title' => 'Platform Administration',
                 'route' => 'admin.system',
                 'icon' => 'shield',
-                'active' => ['admin.system'],
+                'active' => ['admin.system', 'admin.system.users.*'],
                 'order' => 99,
             ],
         ]);
