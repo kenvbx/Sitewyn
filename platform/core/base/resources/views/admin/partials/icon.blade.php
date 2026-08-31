@@ -172,6 +172,30 @@
     </svg>
     @break
 
+  @case('circle-check')
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+      <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+      <path d="M9 12l2 2l4 -4" />
+    </svg>
+    @break
+
+  @case('eye')
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+    </svg>
+    @break
+
+  @case('eye-off')
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+      <path d="M21 9c-2.4 4 -5.4 6 -9 6c-1.592 0 -3.088 -.403 -4.5 -1.115" />
+      <path d="M10.347 6.04c.207 -.026 .431 -.04 .653 -.04c3.6 0 6.6 2 9 6c-.261 .435 -.53 .844 -.806 1.225" />
+      <path d="M16.737 16.74a9.894 9.894 0 0 1 -7.737 1.26" />
+      <path d="M3 3l18 18" />
+      <path d="M6.293 6.298c-.966 .927 -1.87 2.16 -2.573 3.702c2.4 4 5.4 6 9 6" />
+    </svg>
+    @break
+
   @default
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
       <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />

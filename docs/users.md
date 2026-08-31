@@ -56,6 +56,20 @@ target: `User::isTeamMember()` → `/admin/system/users/{id}/edit`, otherwise
 `system users` (module `core/base`) and are synced to the `permissions` table
 by `php artisan permission:sync` (39 keys total as of this split).
 
+## Form enhancements backlog
+
+The team-surface account card uses a Botble-profile-style tabbed layout
+(User profile / Change password / Preferences) over the shared
+`core/base::admin.system-users.form` partial. Two sample features are
+deliberately missing until the schema grows (schema enhancement required
+first — no migration yet):
+
+- **Avatar tab** — the `users` table has no avatar column.
+- **First/last name split** — the table keeps a single `name` column, so the
+  profile tab keeps one `name` field instead of Botble's first/last pair.
+- **Phone number** — no column either; add with the same migration as above
+  if ever needed.
+
 ## Tests
 
 - `tests/Feature/AdminUserCrudTest.php` — outside surface CRUD, payload

@@ -555,6 +555,11 @@
 
                 root.setAttribute('data-bs-theme', next)
                 localStorage.setItem('sitewyn-admin-theme', next)
+
+                // Announce the change so page widgets (e.g. the theme mode
+                // radios on the system user form) can mirror it. The moon/sun
+                // icons need no event — they are pure CSS off data-bs-theme.
+                document.dispatchEvent(new CustomEvent('sitewyn-admin-theme-changed', { detail: { theme: next } }))
               })
             }
 

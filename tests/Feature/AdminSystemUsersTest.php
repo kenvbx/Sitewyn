@@ -108,6 +108,58 @@ class AdminSystemUsersTest extends TestCase
             ->assertDontSee('New Teammate');
     }
 
+    public function test_edit_team_user_page_renders_the_tabbed_account_form(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Tabbed Member',
+            'email' => 'tabbed-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertSee('User profile')
+            ->assertSee('Change password')
+            ->assertSee('Preferences')
+            ->assertSee('New password')
+            ->assertSee('Confirm password')
+            // The main card keeps one shared form: the profile name field, the
+            // password inputs and the client-side theme radios all submit.
+            ->assertSee('name="name"', false)
+            ->assertSee('id="password" name="password"', false)
+            ->assertSee('name="admin_theme"', false)
+            ->assertSee('More languages coming soon.')
+            // Password stays optional on edit.
+            ->assertDontSee('required minlength="8"', false)
+            // The admin cards outside the tabs are untouched.
+            ->assertSee('Account status')
+            ->assertSee('Roles')
+            ->assertSee('Update');
+    }
+
+    public function test_create_team_user_page_renders_the_tabbed_account_form(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/system/users/create')
+            ->assertOk()
+            ->assertSee('Change password')
+            ->assertSee('Preferences')
+            ->assertSee('New password')
+            ->assertSee('Confirm password')
+            // Password is required on create.
+            ->assertSee('required minlength="8"', false)
+            ->assertSee('Save user');
+    }
+
     public function test_super_admin_cannot_delete_own_account(): void
     {
         $admin = User::factory()->create([
