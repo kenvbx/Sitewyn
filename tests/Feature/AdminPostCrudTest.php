@@ -577,6 +577,91 @@ class AdminPostCrudTest extends TestCase
             ->assertDontSee('PREVIEW — DRAFT');
     }
 
+    public function test_super_admin_can_bulk_delete_posts(): void
+    {
+        $admin = $this->adminUser();
+        $first = $this->createPost(['title' => 'First post', 'slug' => 'first-post']);
+        $second = $this->createPost(['title' => 'Second post', 'slug' => 'second-post']);
+        $kept = $this->createPost(['title' => 'Kept post', 'slug' => 'kept-post']);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/posts/bulk-delete', [
+                'ids' => [$first->id, $second->id],
+            ])
+            ->assertRedirect('/admin/posts')
+            ->assertSessionHas('status', 'Deleted 2 posts.');
+
+        $this->assertDatabaseMissing('posts', ['id' => $first->id]);
+        $this->assertDatabaseMissing('posts', ['id' => $second->id]);
+        $this->assertDatabaseHas('posts', ['id' => $kept->id]);
+    }
+
+    public function test_bulk_delete_requires_post_delete_permission(): void
+    {
+        $post = $this->createPost(['title' => 'First post', 'slug' => 'first-post']);
+
+        $this->post('/admin/posts/bulk-delete', ['ids' => [$post->id]])
+            ->assertRedirect('/admin/login');
+
+        $this->actingAs($this->plainAdmin(), 'admin')
+            ->post('/admin/posts/bulk-delete', ['ids' => [$post->id]])
+            ->assertForbidden();
+
+        $this->actingAs($this->userWithPermissions(['post.index']), 'admin')
+            ->post('/admin/posts/bulk-delete', ['ids' => [$post->id]])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('posts', ['id' => $post->id]);
+    }
+
+    public function test_bulk_delete_without_selection_flashes_warning(): void
+    {
+        $admin = $this->adminUser();
+        $post = $this->createPost(['title' => 'First post', 'slug' => 'first-post']);
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/posts/bulk-delete', [])
+            ->assertRedirect('/admin/posts')
+            ->assertSessionHas('status', 'Select at least one post to delete.');
+
+        $this->assertDatabaseHas('posts', ['id' => $post->id]);
+    }
+
+    public function test_posts_index_renders_created_column_and_public_slug(): void
+    {
+        $admin = $this->adminUser();
+        $post = $this->createPost(['title' => 'First post', 'slug' => 'first-post']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts')
+            ->assertOk()
+            ->assertSee('<th>Created</th>', false)
+            ->assertSee($post->created_at->format('d M Y'))
+            ->assertSee('<span class="font-monospace text-secondary small">/blog/first-post</span>', false);
+    }
+
+    public function test_post_edit_page_shows_view_post_link_only_for_published_posts(): void
+    {
+        $admin = $this->adminUser();
+        $published = $this->createPost([
+            'title' => 'Launch day',
+            'slug' => 'launch-day',
+            'status' => Post::STATUS_PUBLISHED,
+        ]);
+        $draft = $this->createPost(['title' => 'Coming soon', 'slug' => 'coming-soon']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts/'.$published->id.'/edit')
+            ->assertOk()
+            ->assertSee('View post')
+            ->assertSee('/blog/launch-day', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/posts/'.$draft->id.'/edit')
+            ->assertOk()
+            ->assertDontSee('View post');
+    }
+
     private function createPost(array $attributes = []): Post
     {
         return Post::query()->create([

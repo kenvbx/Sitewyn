@@ -11,6 +11,11 @@
   <li class="breadcrumb-item active" aria-current="page">Posts</li>
 @endsection
 
+@php
+  $canBulkDelete = auth('admin')->user()?->can('post.delete') ?? false;
+  $colspan = $canBulkDelete ? 8 : 7;
+@endphp
+
 @section('page-actions')
   <div class="btn-list">
     <form action="{{ route('admin.posts.index', [], false) }}" method="get" class="d-flex gap-2">
@@ -37,6 +42,16 @@
       </select>
       <button type="submit" class="btn">Search</button>
     </form>
+    @if ($canBulkDelete)
+      <div class="dropdown">
+        <button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Bulk actions">
+          Bulk actions
+        </button>
+        <div class="dropdown-menu">
+          <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#posts-bulk-delete">Delete selected</button>
+        </div>
+      </div>
+    @endif
     @can('post.create')
       <a href="{{ route('admin.posts.create') }}" class="btn btn-primary">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
@@ -55,13 +70,20 @@
     title="Post list"
     subtitle="Blog posts are visible on the site only after they are published."
     empty="No posts found."
-    :empty-colspan="5"
+    :empty-colspan="$colspan"
   >
     <x-slot:head>
       <tr>
+        @if ($canBulkDelete)
+          <th class="w-1">
+            <input type="checkbox" class="form-check-input m-0" aria-label="Select all posts" data-post-bulk-select-all>
+          </th>
+        @endif
         <th>Title</th>
+        <th>Slug</th>
         <th>Category</th>
         <th>Status</th>
+        <th>Created</th>
         <th>Updated</th>
         <th class="w-1"></th>
       </tr>
@@ -69,7 +91,13 @@
 
     @forelse ($posts as $post)
       <tr>
+        @if ($canBulkDelete)
+          <td class="w-1">
+            <input type="checkbox" class="form-check-input m-0" name="ids[]" value="{{ $post->id }}" form="admin-posts-bulk-delete-form" aria-label="Select post {{ $post->title }}">
+          </td>
+        @endif
         <td class="fw-medium">{{ $post->title }}</td>
+        <td><span class="font-monospace text-secondary small">/blog/{{ $post->slug }}</span></td>
         <td>{{ $post->category?->name ?? '—' }}</td>
         <td>
           @if ($post->status === 'published')
@@ -78,6 +106,7 @@
             <span class="badge bg-secondary-lt">Draft</span>
           @endif
         </td>
+        <td class="text-secondary">{{ $post->created_at?->format('d M Y') }}</td>
         <td class="text-secondary">{{ $post->updated_at?->format('Y-m-d H:i') }}</td>
         <td>
           <div class="btn-list flex-nowrap">
@@ -106,7 +135,7 @@
       </tr>
     @empty
       <tr>
-        <td colspan="5" class="text-center text-secondary py-5">No posts found.</td>
+        <td colspan="{{ $colspan }}" class="text-center text-secondary py-5">No posts found.</td>
       </tr>
     @endforelse
   </x-admin-data-table>
@@ -128,4 +157,68 @@
       </x-admin-modal>
     @endcan
   @endforeach
+
+  @if ($canBulkDelete)
+    <x-admin-modal id="posts-bulk-delete" title="Delete selected posts">
+      <p>Delete <strong data-post-bulk-count>0</strong> selected posts?</p>
+      <p class="text-secondary mb-0">The posts and their slugs will be permanently removed.</p>
+      <form method="POST" action="{{ route('admin.posts.bulkDelete', [], false) }}" id="admin-posts-bulk-delete-form">
+        @csrf
+      </form>
+
+      <x-slot:footer>
+        <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger" form="admin-posts-bulk-delete-form">Delete selected</button>
+      </x-slot:footer>
+    </x-admin-modal>
+  @endif
 @endsection
+
+@if ($canBulkDelete)
+  @once
+    @push('scripts')
+      <script>
+        ;(function () {
+          var form = document.getElementById('admin-posts-bulk-delete-form')
+
+          if (! form) return
+
+          var selectAll = document.querySelector('[data-post-bulk-select-all]')
+          var count = document.querySelector('[data-post-bulk-count]')
+          var modal = document.getElementById('posts-bulk-delete')
+
+          function selected() {
+            return form.querySelectorAll('input[name="ids[]"]:checked')
+          }
+
+          if (selectAll) {
+            selectAll.addEventListener('change', function () {
+              form.querySelectorAll('input[name="ids[]"]').forEach(function (checkbox) {
+                checkbox.checked = selectAll.checked
+              })
+            })
+          }
+
+          if (modal) {
+            modal.addEventListener('show.bs.modal', function (event) {
+              var checked = selected()
+
+              // Nothing selected: skip the confirm modal and let the POST
+              // come back with a server-side warning flash instead.
+              if (checked.length === 0) {
+                event.preventDefault()
+                form.submit()
+
+                return
+              }
+
+              if (count) {
+                count.textContent = checked.length
+              }
+            })
+          }
+        })()
+      </script>
+    @endpush
+  @endonce
+@endif

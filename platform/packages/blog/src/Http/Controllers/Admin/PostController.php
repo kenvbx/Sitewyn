@@ -114,6 +114,33 @@ class PostController extends Controller
             ->route('admin.posts.index');
     }
 
+    public function bulkDelete(Request $request): RedirectResponse
+    {
+        $ids = collect((array) $request->input('ids', []))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            admin_flash()->warning(__('Select at least one post to delete.'));
+
+            return redirect()
+                ->route('admin.posts.index');
+        }
+
+        $posts = Post::query()->whereIn('id', $ids)->get();
+
+        foreach ($posts as $post) {
+            $this->posts->delete($post);
+        }
+
+        admin_flash()->success(__('Deleted :count posts.', ['count' => $posts->count()]));
+
+        return redirect()
+            ->route('admin.posts.index');
+    }
+
     public function preview(Post $post): View
     {
         return view('package/blog::preview', [

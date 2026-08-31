@@ -36,6 +36,9 @@ Route::prefix('admin')
         Route::delete('posts/{post}', [PostController::class, 'destroy'])
             ->name('posts.destroy')
             ->middleware('permission:post.delete');
+        Route::post('posts/bulk-delete', [PostController::class, 'bulkDelete'])
+            ->name('posts.bulkDelete')
+            ->middleware('permission:post.delete');
 
         Route::get('categories', [CategoryController::class, 'index'])
             ->name('categories.index')
