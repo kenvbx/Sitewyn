@@ -9,6 +9,7 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\LanguageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\MenuController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\PlatformAdminController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PluginManageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SearchController;
@@ -46,6 +47,11 @@ Route::prefix('admin')
             Route::get('/', DashboardController::class)->name('dashboard');
             Route::get('search', SearchController::class)->name('search');
             Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+            // Platform Administration hub — no permission gate, every signed-in
+            // admin can open it; each card on the page gates itself (Dashboard
+            // precedent).
+            Route::get('platform', PlatformAdminController::class)->name('platform');
 
             Route::get('roles', [RoleController::class, 'index'])
                 ->middleware('permission:roles.index')
