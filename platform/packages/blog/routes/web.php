@@ -81,3 +81,13 @@ Route::prefix('admin')
 // /blog/{slug} only ever looks up posts.
 Route::get('/blog/{slug}', [PostPublicController::class, 'show'])
     ->name('blog.posts.show');
+
+// Localized post detail (P5-01): the translation reuses the default
+// language's slug, so the URL is /{locale}/blog/{original-slug}. Three
+// segments, so it cannot collide with the page package's /{slug} catch-all
+// or its /{locale}/{slug} route — and a locale is two lowercase letters,
+// which no reserved first segment (blog, admin, api, ...) can be.
+Route::get('/{locale}/blog/{slug}', [PostPublicController::class, 'showLocalized'])
+    ->name('blog.posts.localized')
+    ->where('locale', '[a-z]{2}')
+    ->where('slug', '[^/]+');
