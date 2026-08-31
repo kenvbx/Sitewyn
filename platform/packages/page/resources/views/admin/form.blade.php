@@ -34,6 +34,15 @@
             placeholder="Leave blank to generate from the title"
             :hint="$page->exists ? 'Leave blank to keep the current slug.' : 'Leave blank to generate a slug from the title.'"
           />
+          <x-admin-form-group
+            name="short_description"
+            label="Short description"
+            type="textarea"
+            :value="$page->short_description"
+            :rows="3"
+            :maxlength="500"
+            hint="A brief summary used by themes and listings."
+          />
           <x-admin-editor
             name="content"
             :value="$page->content"

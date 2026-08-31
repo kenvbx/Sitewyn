@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['title', 'slug', 'content', 'seo_title', 'seo_description', 'og_image', 'status'])]
+#[Fillable(['title', 'slug', 'short_description', 'content', 'seo_title', 'seo_description', 'og_image', 'status'])]
 class Page extends Model
 {
     public const STATUS_DRAFT = 'draft';
