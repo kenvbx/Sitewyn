@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Sitewyn\Core\Base\Models\Permission;
 use Sitewyn\Core\Base\Models\Role;
 use Tests\TestCase;
@@ -158,6 +161,319 @@ class AdminSystemUsersTest extends TestCase
             // Password is required on create.
             ->assertSee('required minlength="8"', false)
             ->assertSee('Save user');
+    }
+
+    public function test_edit_team_user_page_renders_the_avatar_tab(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Avatar Member',
+            'email' => 'avatar-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            // The avatar tab sits between User profile and Change password.
+            ->assertSee('Avatar')
+            ->assertSee('Choose image')
+            // Without a stored avatar the preview shows the initials
+            // fallback; the hidden file input joins the main form.
+            ->assertSee('name="avatar"', false)
+            ->assertSee('<span data-avatar-fallback>AM</span>', false);
+    }
+
+    public function test_edit_team_user_page_renders_the_initials_fallback_and_image_preview(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Pictured Member',
+            'email' => 'pictured-member@example.com',
+            'avatar' => 'avatars/seeded.png',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            // With a stored avatar the preview shows the image and the
+            // remove affordance, not the initials.
+            ->assertSee('data-avatar-image', false)
+            ->assertSee($member->avatar_url, false)
+            ->assertSee('Remove', false);
+    }
+
+    public function test_edit_team_user_page_asks_for_current_password_only_on_self_edit(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Other Member',
+            'email' => 'other-member@example.com',
+        ]);
+
+        // Self-edit: the current password field sits above the new password.
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$admin->id}/edit")
+            ->assertOk()
+            ->assertSee('Current Password', false)
+            ->assertSee('name="current_password"', false);
+
+        // Editing somebody else: the field is never rendered.
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertDontSee('name="current_password"', false);
+    }
+
+    public function test_super_admin_can_upload_an_avatar_for_a_team_user(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Uploaded Member',
+            'email' => 'uploaded-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Uploaded Member',
+                'email' => 'uploaded-member@example.com',
+                'avatar' => UploadedFile::fake()->image('portrait.png'),
+            ])
+            ->assertRedirect("/admin/system/users/{$member->id}/edit")
+            ->assertSessionHasNoErrors();
+
+        $member->refresh();
+
+        // The upload lands on the public disk under avatars/ with its uuid
+        // name, and the header can resolve a public URL from it.
+        $this->assertNotNull($member->avatar);
+        $this->assertStringStartsWith('avatars/', $member->avatar);
+        $this->assertStringEndsWith('.png', $member->avatar);
+        Storage::disk('public')->assertExists($member->avatar);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertSee($member->avatar_url, false);
+    }
+
+    public function test_avatar_upload_replaces_the_previous_file(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Replaced Member',
+            'email' => 'replaced-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Replaced Member',
+                'email' => 'replaced-member@example.com',
+                'avatar' => UploadedFile::fake()->image('first.jpg'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $oldAvatar = $member->refresh()->avatar;
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Replaced Member',
+                'email' => 'replaced-member@example.com',
+                'avatar' => UploadedFile::fake()->image('second.jpg'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $member->refresh();
+
+        $this->assertNotSame($oldAvatar, $member->avatar);
+        Storage::disk('public')->assertExists($member->avatar);
+        Storage::disk('public')->assertMissing($oldAvatar);
+    }
+
+    public function test_avatar_can_be_removed_from_a_team_user(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Removable Member',
+            'email' => 'removable-member@example.com',
+            'avatar' => 'avatars/seeded.png',
+        ]);
+        Storage::disk('public')->put('avatars/seeded.png', 'fake-image');
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Removable Member',
+                'email' => 'removable-member@example.com',
+                'avatar_remove' => '1',
+            ])
+            ->assertRedirect("/admin/system/users/{$member->id}/edit")
+            ->assertSessionHasNoErrors();
+
+        $member->refresh();
+
+        $this->assertNull($member->avatar);
+        Storage::disk('public')->assertMissing('avatars/seeded.png');
+
+        // Back on the form the initials fallback shows again.
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertSee('data-avatar-fallback', false);
+    }
+
+    public function test_avatar_upload_validates_type_and_size(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Strict Member',
+            'email' => 'strict-member@example.com',
+        ]);
+
+        // Not an image.
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Strict Member',
+                'email' => 'strict-member@example.com',
+                'avatar' => UploadedFile::fake()->create('document.pdf', 10, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('avatar');
+
+        // Larger than 2 MB.
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Strict Member',
+                'email' => 'strict-member@example.com',
+                'avatar' => UploadedFile::fake()->image('huge.png')->size(3000),
+            ])
+            ->assertSessionHasErrors('avatar');
+
+        $this->assertNull($member->refresh()->avatar);
+    }
+
+    public function test_self_edit_password_change_requires_the_correct_current_password(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+            'password' => 'secret-password',
+        ]);
+
+        // Wrong current password: rejected, the old password still works.
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$admin->id}", [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'password' => 'new-secret-password',
+                'password_confirmation' => 'new-secret-password',
+                'current_password' => 'wrong-password',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->assertTrue(Hash::check('secret-password', $admin->refresh()->password));
+
+        // Correct current password: the change goes through.
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$admin->id}", [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'password' => 'new-secret-password',
+                'password_confirmation' => 'new-secret-password',
+                'current_password' => 'secret-password',
+            ])
+            ->assertRedirect("/admin/system/users/{$admin->id}/edit")
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('new-secret-password', $admin->refresh()->password));
+    }
+
+    public function test_self_edit_password_change_without_current_password_is_rejected(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+            'password' => 'secret-password',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$admin->id}", [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'password' => 'new-secret-password',
+                'password_confirmation' => 'new-secret-password',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->assertTrue(Hash::check('secret-password', $admin->refresh()->password));
+    }
+
+    public function test_non_self_edit_changes_password_without_current_password(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Reset Member',
+            'email' => 'reset-member@example.com',
+            'password' => 'old-secret-password',
+        ]);
+
+        // An admin resetting somebody else's password never needs (or is
+        // even asked for) the target's current password — a stray value is
+        // ignored as well.
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Reset Member',
+                'email' => 'reset-member@example.com',
+                'password' => 'new-secret-password',
+                'password_confirmation' => 'new-secret-password',
+                'current_password' => 'whatever',
+            ])
+            ->assertRedirect("/admin/system/users/{$member->id}/edit")
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('new-secret-password', $member->refresh()->password));
+    }
+
+    public function test_header_shows_the_avatar_image_when_the_user_has_one(): void
+    {
+        $admin = User::factory()->create([
+            'name' => 'Header Admin',
+            'is_super_admin' => true,
+            'is_active' => true,
+            'avatar' => 'avatars/header.png',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$admin->id}/edit")
+            ->assertOk()
+            // The header dropdown swaps the initials circle for the image.
+            ->assertSee('<span class="avatar avatar-sm"><img src="'.e($admin->avatar_url).'"', false)
+            ->assertDontSee('<span class="avatar avatar-sm">HA</span>', false);
     }
 
     public function test_super_admin_cannot_delete_own_account(): void

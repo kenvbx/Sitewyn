@@ -3,6 +3,18 @@
     // label — field names and validation stay identical on both surfaces.
     $isCreate = ! $user->exists;
     $errorBag = $errors ?? new \Illuminate\Support\ViewErrorBag;
+
+    // Self-edits additionally collect the current password when the password
+    // changes; admins editing somebody else never see that field.
+    $isSelf = $user->exists && auth('admin')->id() === $user->id;
+
+    // Initials fallback for the avatar preview (same pattern as the header
+    // avatar in the master layout): first letter of each name part, two max.
+    $avatarInitials = collect(explode(' ', $user->name))
+        ->filter()
+        ->map(fn (string $part) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($part, 0, 1)))
+        ->take(2)
+        ->implode('') ?: \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($user->email, 0, 1));
 @endphp
 <div class="row row-cards">
   {{-- Main column: Botble-style tabbed account card. The tabs only hide and
@@ -15,6 +27,11 @@
           <li class="nav-item" role="presentation">
             <a href="#system-user-tab-profile" class="nav-link active" data-bs-toggle="tab" role="tab" aria-selected="true" aria-controls="system-user-tab-profile">User profile</a>
           </li>
+          @if ($user->exists)
+            <li class="nav-item" role="presentation">
+              <a href="#system-user-tab-avatar" class="nav-link" data-bs-toggle="tab" role="tab" aria-selected="false" aria-controls="system-user-tab-avatar">Avatar</a>
+            </li>
+          @endif
           <li class="nav-item" role="presentation">
             <a href="#system-user-tab-password" class="nav-link" data-bs-toggle="tab" role="tab" aria-selected="false" aria-controls="system-user-tab-password">Change password</a>
           </li>
@@ -38,7 +55,56 @@
           </div>
         </div>
 
+        @if ($user->exists)
+          <div class="tab-pane" id="system-user-tab-avatar" role="tabpanel" aria-labelledby="system-user-tab-avatar" tabindex="0">
+            {{-- The file input is part of the main form: the upload only
+                 happens on submit, the buttons below just drive the local
+                 preview and the remove flag. --}}
+            <div class="mb-3 d-flex align-items-center gap-3">
+              <div class="system-user-avatar" data-avatar-preview>
+                @if ($user->avatar)
+                  <img src="{{ $user->avatar_url }}" alt="{{ __('Avatar of :name', ['name' => $user->name]) }}" data-avatar-image />
+                  <span class="d-none" data-avatar-fallback>{{ $avatarInitials }}</span>
+                @else
+                  <span data-avatar-fallback>{{ $avatarInitials }}</span>
+                @endif
+              </div>
+              <div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-outline-secondary" data-avatar-choose>
+                    @include('core/base::admin.partials.icon', ['name' => 'media'])
+                    Choose image
+                  </button>
+                  <button type="button" class="btn btn-outline-danger" data-avatar-remove @unless($user->avatar) hidden @endunless>Remove</button>
+                </div>
+                <div class="form-hint">JPG, PNG or WebP, up to 2&nbsp;MB.</div>
+              </div>
+            </div>
+            <input type="file" id="avatar" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="d-none" data-avatar-input aria-label="Choose avatar image" />
+            <input type="hidden" name="avatar_remove" value="0" data-avatar-remove-flag />
+          </div>
+        @endif
+
         <div class="tab-pane" id="system-user-tab-password" role="tabpanel" aria-labelledby="system-user-tab-password" tabindex="0">
+          @if ($isSelf)
+            {{-- Self-edit only: proving the current password when the
+                 password changes. Admins editing somebody else never need it. --}}
+            <div class="mb-3">
+              <label class="form-label required" for="current_password">Current Password</label>
+              <div class="input-group input-group-flat">
+                <input type="password" id="current_password" name="current_password" value="{{ old('current_password') }}" autocomplete="current-password" class="form-control {{ $errorBag->has('current_password') ? 'is-invalid' : '' }}" />
+                <span class="input-group-text">
+                  <button type="button" class="btn btn-link link-secondary p-0" data-admin-password-toggle aria-label="Show password">
+                    <span class="admin-password-icon-show">@include('core/base::admin.partials.icon', ['name' => 'eye'])</span>
+                    <span class="admin-password-icon-hide d-none">@include('core/base::admin.partials.icon', ['name' => 'eye-off'])</span>
+                  </button>
+                </span>
+                <div class="invalid-feedback">The current password is incorrect.</div>
+              </div>
+              <div class="form-hint">Only required when you set a new password.</div>
+            </div>
+          @endif
+
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
@@ -176,6 +242,89 @@
           })
         })
 
+        // --- Avatar tab: local preview + remove (upload happens on submit) ---
+        var avatarInput = document.querySelector('[data-avatar-input]')
+
+        if (avatarInput) {
+          var preview = document.querySelector('[data-avatar-preview]')
+          var image = preview ? preview.querySelector('[data-avatar-image]') : null
+          var fallback = preview ? preview.querySelector('[data-avatar-fallback]') : null
+          var chooseButton = document.querySelector('[data-avatar-choose]')
+          var removeButton = document.querySelector('[data-avatar-remove]')
+          var removeFlag = document.querySelector('[data-avatar-remove-flag]')
+          var previewUrl = null
+
+          var showImagePreview = function (src) {
+            if (! preview || ! image || ! fallback) {
+              return
+            }
+
+            image.src = src
+            image.classList.remove('d-none')
+            fallback.classList.add('d-none')
+
+            if (removeButton) {
+              removeButton.hidden = false
+            }
+          }
+
+          var showFallbackPreview = function () {
+            if (! preview || ! image || ! fallback) {
+              return
+            }
+
+            if (previewUrl) {
+              URL.revokeObjectURL(previewUrl)
+              previewUrl = null
+            }
+
+            image.classList.add('d-none')
+            image.removeAttribute('src')
+            fallback.classList.remove('d-none')
+
+            if (removeButton) {
+              removeButton.hidden = true
+            }
+          }
+
+          if (chooseButton) {
+            chooseButton.addEventListener('click', function () {
+              avatarInput.click()
+            })
+          }
+
+          avatarInput.addEventListener('change', function () {
+            var file = avatarInput.files && avatarInput.files[0]
+
+            if (! file) {
+              return
+            }
+
+            if (previewUrl) {
+              URL.revokeObjectURL(previewUrl)
+            }
+
+            previewUrl = URL.createObjectURL(file)
+            showImagePreview(previewUrl)
+
+            // A new upload always wins over the remove flag.
+            if (removeFlag) {
+              removeFlag.value = '0'
+            }
+          })
+
+          if (removeButton) {
+            removeButton.addEventListener('click', function () {
+              avatarInput.value = ''
+              showFallbackPreview()
+
+              if (removeFlag) {
+                removeFlag.value = '1'
+              }
+            })
+          }
+        }
+
         // --- Theme mode radios (Preferences tab) ---
         // Same mechanism as the top-bar toggle: localStorage 'sitewyn-admin-theme'
         // + html[data-bs-theme]. The top-bar moon/sun icons are pure CSS off that
@@ -246,3 +395,31 @@
     </script>
   @endpush
 @endonce
+
+@push('styles')
+  <style>
+    /* --- Team user form: avatar preview (page-scoped, no global impact) --- */
+    .system-user-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      overflow: hidden;
+      background-color: rgba(37, 99, 235, .08);
+      color: #2563eb;
+      font-size: 2.25rem;
+      font-weight: 600;
+      letter-spacing: .02em;
+      user-select: none;
+    }
+
+    .system-user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+@endpush

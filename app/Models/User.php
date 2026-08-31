@@ -6,16 +6,18 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Sitewyn\Core\Base\Models\Concerns\HasPermissions;
 use Sitewyn\Core\Base\Models\Role;
 use Sitewyn\Core\Base\Models\UserMeta;
 
-#[Fillable(['name', 'username', 'email', 'password', 'is_super_admin', 'is_active', 'last_login_at'])]
+#[Fillable(['name', 'username', 'email', 'avatar', 'password', 'is_super_admin', 'is_active', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -36,6 +38,17 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Public URL of the stored avatar (relative storage path, `avatars/…` on
+     * the public disk); null when the account has no avatar.
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->avatar
+            ? Storage::disk('public')->url($this->avatar)
+            : null);
     }
 
     /**

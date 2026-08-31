@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Sitewyn\Core\Base\Http\Requests\Admin\StoreTeamUserRequest;
 use Sitewyn\Core\Base\Http\Requests\Admin\UpdateTeamUserRequest;
@@ -104,11 +108,36 @@ class SystemUserController extends Controller
         if ($editingSelf) {
             // Nobody may change their own privileges, not even super admins.
             unset($validated['roles'], $validated['is_super_admin']);
+
+            // Self-service password change must re-prove the current one; an
+            // admin editing somebody else never sees (nor needs) this field.
+            if (($validated['password'] ?? '') !== ''
+                && ! Hash::check((string) ($validated['current_password'] ?? ''), $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => __('The current password is incorrect.'),
+                ]);
+            }
         } else {
             $this->assertPrivilegesAssignable($validated);
         }
 
-        $user->update($this->payload($validated, $user));
+        $payload = $this->payload($validated, $user);
+        $oldAvatar = $user->avatar;
+
+        // Avatar: a fresh upload replaces the stored file, the remove flag
+        // from the form just clears the column. The old file is only deleted
+        // after the column update succeeds.
+        if ($request->hasFile('avatar')) {
+            $payload['avatar'] = $this->storeAvatar($request->file('avatar'));
+        } elseif (! empty($validated['avatar_remove'])) {
+            $payload['avatar'] = null;
+        }
+
+        $user->update($payload);
+
+        if (array_key_exists('avatar', $payload)) {
+            $this->deleteAvatarFile($oldAvatar);
+        }
 
         if (! $editingSelf) {
             $user->roles()->sync($validated['roles'] ?? []);
@@ -269,6 +298,27 @@ class SystemUserController extends Controller
     private function isEditingSelf(User $user): bool
     {
         return Auth::guard('admin')->id() === $user->id;
+    }
+
+    /**
+     * Store an avatar upload under a uuid name on the public disk; the path
+     * is relative (`avatars/<uuid>.<ext>`) so it can be resolved later via
+     * Storage::disk('public')->url().
+     */
+    private function storeAvatar(UploadedFile $file): string
+    {
+        return $file->storeAs(
+            'avatars',
+            Str::uuid()->toString().'.'.strtolower($file->getClientOriginalExtension()),
+            'public',
+        );
+    }
+
+    private function deleteAvatarFile(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /**

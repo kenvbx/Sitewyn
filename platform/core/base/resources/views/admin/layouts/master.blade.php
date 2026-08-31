@@ -318,6 +318,7 @@
         $adminUser = auth('admin')->user();
         $adminName = $adminUser?->name ?: 'Administrator';
         $adminInitials = collect(explode(' ', $adminName))->filter()->map(fn (string $part) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($part, 0, 1)))->take(2)->implode('') ?: 'AD';
+        $adminAvatarUrl = $adminUser?->avatar_url;
         $adminMenuItems = app(\Sitewyn\Core\Base\Support\AdminMenuRegistry::class)->visibleFor($adminUser);
         $adminFlash = app(\Sitewyn\Core\Base\Support\AdminFlash::class)->current();
     @endphp
@@ -413,7 +414,12 @@
             </div>
             <div class="nav-item dropdown ms-1">
               <a href="#" class="nav-link d-flex align-items-center lh-1 p-0 ps-2 sitewyn-admin-user-toggle" data-bs-toggle="dropdown" aria-label="Open user menu">
-                <span class="avatar avatar-sm">{{ $adminInitials }}</span>
+                @if ($adminAvatarUrl)
+                  {{-- Stored avatar replaces the initials circle. --}}
+                  <span class="avatar avatar-sm"><img src="{{ $adminAvatarUrl }}" alt="{{ $adminName }}" /></span>
+                @else
+                  <span class="avatar avatar-sm">{{ $adminInitials }}</span>
+                @endif
                 <div class="d-none d-xl-block ps-2">
                   <div class="fw-bold">{{ $adminName }}</div>
                   <div class="mt-1 small text-secondary">{{ $adminUser?->email }}</div>

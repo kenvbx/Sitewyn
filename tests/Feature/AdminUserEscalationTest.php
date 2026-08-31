@@ -32,6 +32,8 @@ class AdminUserEscalationTest extends TestCase
                 'email' => $editor->email,
                 'password' => 'new-password',
                 'password_confirmation' => 'new-password',
+                // Self-edits re-prove the current password (factory default).
+                'current_password' => 'password',
                 'is_active' => '',
                 'is_super_admin' => '1',
                 'roles' => [$otherRole->id],
