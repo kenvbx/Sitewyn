@@ -179,17 +179,32 @@
           var count = document.querySelector('[data-page-bulk-count]')
           var modal = document.getElementById('pages-bulk-delete')
 
+          // Row checkboxes only reference the bulk-delete form via the
+          // form="" attribute, so query them document-wide.
           function selected() {
-            return form.querySelectorAll('input[name="ids[]"]:checked')
+            return document.querySelectorAll('input[name="ids[]"][form="admin-pages-bulk-delete-form"]:checked')
           }
 
           if (selectAll) {
             selectAll.addEventListener('change', function () {
-              form.querySelectorAll('input[name="ids[]"]').forEach(function (checkbox) {
+              document.querySelectorAll('input[name="ids[]"][form="admin-pages-bulk-delete-form"]').forEach(function (checkbox) {
                 checkbox.checked = selectAll.checked
               })
             })
           }
+
+          // Keep the select-all checkbox in sync when rows are toggled by hand.
+          document.querySelectorAll('input[name="ids[]"][form="admin-pages-bulk-delete-form"]').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+              if (! selectAll) return
+
+              var checked = selected().length
+              var total = document.querySelectorAll('input[name="ids[]"][form="admin-pages-bulk-delete-form"]').length
+
+              selectAll.checked = checked > 0 && checked === total
+              selectAll.indeterminate = checked > 0 && checked < total
+            })
+          })
 
           if (modal) {
             modal.addEventListener('show.bs.modal', function (event) {
