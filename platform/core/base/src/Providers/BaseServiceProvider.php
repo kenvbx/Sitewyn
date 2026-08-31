@@ -2,8 +2,13 @@
 
 namespace Sitewyn\Core\Base\Providers;
 
+use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Sitewyn\Core\Base\Console\Commands\PluginActivateCommand;
@@ -13,11 +18,16 @@ use Sitewyn\Core\Base\Console\Commands\SyncPermissionsCommand;
 use Sitewyn\Core\Base\Http\Middleware\CheckPermission;
 use Sitewyn\Core\Base\Support\AdminFlash;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
+use Sitewyn\Core\Base\Support\AuditLogger;
+use Sitewyn\Core\Base\Support\BackupService;
 use Sitewyn\Core\Base\Support\ModuleProviderRepository;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
 use Sitewyn\Core\Base\Support\PluginActivator;
 use Sitewyn\Core\Base\Support\PluginManager;
 use Sitewyn\Core\Base\Support\SettingStore;
+use Sitewyn\Core\Base\Support\SitemapRegistry;
+use Sitewyn\Core\Base\Support\ThemeManager;
+use Sitewyn\Core\Base\Support\WidgetRenderer;
 use Sitewyn\Core\Base\View\Components\Admin\Alert;
 use Sitewyn\Core\Base\View\Components\Admin\Card;
 use Sitewyn\Core\Base\View\Components\Admin\DataTable;
@@ -26,6 +36,7 @@ use Sitewyn\Core\Base\View\Components\Admin\FormGroup;
 use Sitewyn\Core\Base\View\Components\Admin\Modal;
 use Sitewyn\Core\Base\View\Components\Admin\Pagination;
 use Sitewyn\Core\Base\View\Components\Admin\Toast;
+use Sitewyn\Core\Base\View\Components\WidgetArea;
 
 class BaseServiceProvider extends ServiceProvider
 {
@@ -34,10 +45,15 @@ class BaseServiceProvider extends ServiceProvider
         $this->mergeConfigFrom($this->modulePath('config/sitewyn-base.php'), 'sitewyn-base');
         $this->app->singleton(AdminFlash::class);
         $this->app->singleton(AdminMenuRegistry::class);
+        $this->app->singleton(AuditLogger::class);
+        $this->app->singleton(BackupService::class);
         $this->app->singleton(PermissionRegistry::class);
         $this->app->singleton(PluginActivator::class);
         $this->app->singleton(PluginManager::class);
         $this->app->singleton(SettingStore::class);
+        $this->app->singleton(SitemapRegistry::class);
+        $this->app->singleton(ThemeManager::class);
+        $this->app->singleton(WidgetRenderer::class);
         $this->registerModuleProviders();
     }
 
@@ -52,7 +68,9 @@ class BaseServiceProvider extends ServiceProvider
         $this->registerRouteMiddleware();
         $this->registerCorePermissions();
         $this->registerCoreAdminMenu();
+        $this->registerAuthAuditListeners();
         $this->applyApplicationSettings();
+        $this->registerActiveThemeViews();
         $this->registerCommands();
     }
 
@@ -109,6 +127,7 @@ class BaseServiceProvider extends ServiceProvider
         Blade::component(Alert::class, 'admin-alert');
         Blade::component(Toast::class, 'admin-toast');
         Blade::component(Pagination::class, 'admin-pagination');
+        Blade::component(WidgetArea::class, 'widget-area');
     }
 
     private function registerPermissionGate(): void
@@ -196,6 +215,30 @@ class BaseServiceProvider extends ServiceProvider
                 'group' => 'plugins',
                 'description' => 'Activate and deactivate plugins.',
             ],
+            [
+                'key' => 'audit.index',
+                'name' => 'View audit logs',
+                'group' => 'audit',
+                'description' => 'Review the audit log of important admin actions.',
+            ],
+            [
+                'key' => 'backups.manage',
+                'name' => 'Manage backups',
+                'group' => 'backups',
+                'description' => 'Create, download, restore, and delete backups.',
+            ],
+            [
+                'key' => 'menus.manage',
+                'name' => 'Manage menus',
+                'group' => 'menus',
+                'description' => 'Create frontend navigation menus and organize their items.',
+            ],
+            [
+                'key' => 'widgets.manage',
+                'name' => 'Manage widgets',
+                'group' => 'widgets',
+                'description' => 'Manage the widget areas declared by the active theme.',
+            ],
         ], 'core/base');
     }
 
@@ -258,6 +301,24 @@ class BaseServiceProvider extends ServiceProvider
                 ],
             ],
             [
+                'id' => 'menus',
+                'title' => 'Menus',
+                'route' => 'admin.menus.index',
+                'permission' => 'menus.manage',
+                'icon' => 'menu',
+                'active' => ['admin.menus.*'],
+                'order' => 25,
+            ],
+            [
+                'id' => 'widgets',
+                'title' => 'Widgets',
+                'route' => 'admin.widgets.index',
+                'permission' => 'widgets.manage',
+                'icon' => 'widget',
+                'active' => ['admin.widgets.*'],
+                'order' => 26,
+            ],
+            [
                 'id' => 'plugins',
                 'title' => 'Plugins',
                 'route' => 'admin.plugins.index',
@@ -265,6 +326,24 @@ class BaseServiceProvider extends ServiceProvider
                 'icon' => 'plugin',
                 'active' => ['admin.plugins.*'],
                 'order' => 85,
+            ],
+            [
+                'id' => 'audit-logs',
+                'title' => 'Audit Logs',
+                'route' => 'admin.audit-logs.index',
+                'permission' => 'audit.index',
+                'icon' => 'audit',
+                'active' => ['admin.audit-logs.*'],
+                'order' => 86,
+            ],
+            [
+                'id' => 'backups',
+                'title' => 'Backups',
+                'route' => 'admin.backups.index',
+                'permission' => 'backups.manage',
+                'icon' => 'backup',
+                'active' => ['admin.backups.*'],
+                'order' => 87,
             ],
             [
                 'id' => 'settings',
@@ -281,5 +360,61 @@ class BaseServiceProvider extends ServiceProvider
     private function applyApplicationSettings(): void
     {
         $this->app->make(SettingStore::class)->applyApplicationConfig();
+    }
+
+    /**
+     * Theme views (P5-02) are looked up first: prepending the active theme's
+     * view directory makes top-level names like frontend.page resolve into
+     * the theme, while everything else falls through to the app as before.
+     * Runs after applyApplicationSettings() so the active_theme setting is
+     * already readable. ThemeManager falls back to the default theme when
+     * the setting is missing or stale, and this method skips cleanly when
+     * even that is undiscoverable.
+     */
+    private function registerActiveThemeViews(): void
+    {
+        $theme = $this->app->make(ThemeManager::class)->activeTheme();
+
+        if ($theme === []) {
+            return;
+        }
+
+        $viewPath = $theme['path'].DIRECTORY_SEPARATOR.'resources/views';
+
+        if (is_dir($viewPath)) {
+            view()->getFinder()->prependLocation($viewPath);
+        }
+    }
+
+    /**
+     * Audit log entries for admin authentication: successful logins, logouts,
+     * and failed credential attempts. The login flow in AuthController checks
+     * credentials manually, so it fires the Failed event itself.
+     */
+    private function registerAuthAuditListeners(): void
+    {
+        $logger = fn (): AuditLogger => $this->app->make(AuditLogger::class);
+
+        Event::listen(Login::class, function (Login $event) use ($logger): void {
+            if ($event->guard === 'admin') {
+                $logger()->record('login', $event->user->getMorphClass(), (int) $event->user->getAuthIdentifier());
+            }
+        });
+
+        Event::listen(Logout::class, function (Logout $event) use ($logger): void {
+            if ($event->guard === 'admin' && $event->user !== null) {
+                $logger()->record('logout', $event->user->getMorphClass(), (int) $event->user->getAuthIdentifier());
+            }
+        });
+
+        Event::listen(Failed::class, function (Failed $event) use ($logger): void {
+            if ($event->guard !== 'admin') {
+                return;
+            }
+
+            $logger()->record('login-failed', $event->user?->getMorphClass() ?? User::class, null, [
+                'email' => $event->credentials['email'] ?? null,
+            ]);
+        });
     }
 }

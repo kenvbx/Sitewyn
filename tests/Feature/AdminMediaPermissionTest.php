@@ -31,7 +31,7 @@ class AdminMediaPermissionTest extends TestCase
     public function test_permission_sync_persists_media_permissions(): void
     {
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 31 permissions.')
+            ->expectsOutputToContain('Synced 35 permissions.')
             ->assertSuccessful();
 
         foreach (['media.index', 'media.upload', 'media.edit', 'media.delete'] as $key) {

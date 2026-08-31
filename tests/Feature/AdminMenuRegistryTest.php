@@ -24,10 +24,14 @@ class AdminMenuRegistryTest extends TestCase
         $this->assertTrue($registry->has('posts'));
         $this->assertTrue($registry->has('categories'));
         $this->assertTrue($registry->has('tags'));
+        $this->assertTrue($registry->has('menus'));
+        $this->assertTrue($registry->has('widgets'));
         $this->assertTrue($registry->has('media'));
         $this->assertTrue($registry->has('plugins'));
+        $this->assertTrue($registry->has('audit-logs'));
+        $this->assertTrue($registry->has('backups'));
         $this->assertTrue($registry->has('settings'));
-        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'media', 'plugins', 'settings'], $registry->all()->pluck('id')->all());
+        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'menus', 'widgets', 'media', 'plugins', 'audit-logs', 'backups', 'settings'], $registry->all()->pluck('id')->all());
         $this->assertSame(['users', 'roles', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
     }
 
