@@ -179,14 +179,45 @@ class AdminSystemUsersTest extends TestCase
             ->assertOk()
             // The avatar tab sits between User profile and Change password.
             ->assertSee('Avatar')
-            ->assertSee('Choose image')
-            // Without a stored avatar the preview shows the initials
-            // fallback; the hidden file input joins the main form.
+            ->assertSee('Change avatar')
+            // Without a stored avatar the Tabler avatar span shows the
+            // initials fallback, the remove button stays hidden and the
+            // hidden file input joins the main form.
             ->assertSee('name="avatar"', false)
-            ->assertSee('<span data-avatar-fallback>AM</span>', false);
+            ->assertSee('avatar-xl" data-avatar-preview', false)
+            ->assertSee('>AM</span>', false)
+            ->assertSee('hidden >Delete avatar', false);
     }
 
-    public function test_edit_team_user_page_renders_the_initials_fallback_and_image_preview(): void
+    public function test_avatar_preview_block_stays_wired_for_users_without_an_avatar(): void
+    {
+        // Regression: the preview used to hinge on an <img data-avatar-image>
+        // tag that only rendered for users WITH a stored avatar, so picking a
+        // file did nothing and no remove button appeared for everybody else.
+        // The Tabler-style span keeps every hook in the markup either way.
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Bare Member',
+            'email' => 'bare-member@example.com',
+        ]);
+
+        $this->assertNull($member->avatar);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertSee('avatar-xl" data-avatar-preview', false)
+            ->assertSee('>BM</span>', false)
+            ->assertSee('data-avatar-choose', false)
+            ->assertSee('hidden >Delete avatar', false)
+            ->assertSee('name="avatar"', false)
+            ->assertSee('data-avatar-remove-flag', false);
+    }
+
+    public function test_edit_team_user_page_renders_the_image_preview_for_a_stored_avatar(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,
@@ -201,11 +232,11 @@ class AdminSystemUsersTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get("/admin/system/users/{$member->id}/edit")
             ->assertOk()
-            // With a stored avatar the preview shows the image and the
-            // remove affordance, not the initials.
-            ->assertSee('data-avatar-image', false)
-            ->assertSee($member->avatar_url, false)
-            ->assertSee('Remove', false);
+            // With a stored avatar the Tabler span carries the picture as a
+            // background-image and the remove affordance shows.
+            ->assertSee('background-image: url(\''.$member->avatar_url.'\')', false)
+            ->assertSee('Delete avatar', false)
+            ->assertDontSee('hidden >Delete avatar', false);
     }
 
     public function test_edit_team_user_page_asks_for_current_password_only_on_self_edit(): void
@@ -266,7 +297,7 @@ class AdminSystemUsersTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get("/admin/system/users/{$member->id}/edit")
             ->assertOk()
-            ->assertSee($member->avatar_url, false);
+            ->assertSee('background-image: url(\''.$member->avatar_url.'\')', false);
     }
 
     public function test_avatar_upload_replaces_the_previous_file(): void
@@ -338,7 +369,8 @@ class AdminSystemUsersTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get("/admin/system/users/{$member->id}/edit")
             ->assertOk()
-            ->assertSee('data-avatar-fallback', false);
+            ->assertSee('avatar-xl" data-avatar-preview', false)
+            ->assertSee('>RM</span>', false);
     }
 
     public function test_avatar_upload_validates_type_and_size(): void
