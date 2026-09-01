@@ -10,10 +10,6 @@
   <li class="breadcrumb-item active" aria-current="page">{{ $role->name }}</li>
 @endsection
 
-@section('page-actions')
-  <a href="{{ route('admin.system.roles.index') }}" class="btn">Back</a>
-@endsection
-
 @section('content')
   <form method="POST" action="{{ route('admin.system.roles.update', $role) }}" class="needs-validation" data-admin-validate novalidate>
     @csrf

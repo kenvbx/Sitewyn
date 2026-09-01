@@ -50,14 +50,17 @@ class AdminRoleCrudTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($user, 'admin')
+        // Default "Save" stays on the saved role: create now redirects to the
+        // new role's edit page ("Save and close" returns to the index instead).
+        $response = $this->actingAs($user, 'admin')
             ->post('/admin/system/roles', [
                 'name' => 'Content Editor',
                 'permissions' => ['users.index', 'roles.index'],
-            ])
-            ->assertRedirect('/admin/system/roles');
+            ]);
 
         $role = Role::query()->where('slug', 'content-editor')->firstOrFail();
+
+        $response->assertRedirect("/admin/system/roles/{$role->id}/edit");
 
         $this->assertDatabaseHas('permissions', [
             'key' => 'users.index',
@@ -92,6 +95,134 @@ class AdminRoleCrudTest extends TestCase
         $this->assertSame('role-manager', $role->slug);
         $this->assertSame('Manages admin roles.', $role->description);
         $this->assertSame(['roles.create', 'roles.edit'], $role->permissions()->pluck('key')->sort()->values()->all());
+    }
+
+    public function test_role_create_form_renders_permission_flags_tree(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->get('/admin/system/roles/create')
+            ->assertOk()
+            ->assertSee('Permission Flags')
+            ->assertSee('All Permissions')
+            ->assertSee('Collapse all')
+            ->assertSee('Expand all')
+            ->assertSee('data-role-all-master', false)
+            ->assertSee('data-role-module-master', false)
+            ->assertSee('data-role-group-master', false)
+            ->assertSee('data-role-permission', false)
+            ->assertSee('data-role-tree-toggle', false)
+            // Module badge (green) and feature group badge (orange).
+            ->assertSee('badge bg-green-lt', false)
+            ->assertSee('badge bg-orange-lt', false)
+            ->assertSee('>Core</span>', false)
+            ->assertSee('>Users</span>', false)
+            ->assertSee('name="permissions[]" value="users.index"', false)
+            ->assertSee('name="permissions[]" value="roles.index"', false)
+            // Botble-style limits with live counters and footer controls.
+            ->assertSee('maxlength="120"', false)
+            ->assertSee('maxlength="250"', false)
+            ->assertSee('data-role-counter="120"', false)
+            ->assertSee('data-role-counter="250"', false)
+            ->assertSee('name="save_and_close"', false)
+            ->assertSee('Save and close');
+    }
+
+    public function test_role_edit_form_renders_selected_permission_checked(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $role = Role::factory()->create();
+        $permission = Permission::factory()->create([
+            'key' => 'users.index',
+            'name' => 'View users',
+            'module' => 'core/base',
+            'group' => 'users',
+        ]);
+
+        $role->permissions()->attach($permission);
+
+        $this->actingAs($user, 'admin')
+            ->get("/admin/system/roles/{$role->id}/edit")
+            ->assertOk()
+            ->assertSee('Permission Flags')
+            // The assigned permission renders pre-checked inside the tree.
+            ->assertSee('value="users.index" data-role-permission checked', false);
+    }
+
+    public function test_save_and_close_returns_to_roles_index_after_create(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->post('/admin/system/roles', [
+                'name' => 'Reviewer',
+                'save_and_close' => '1',
+            ])
+            ->assertRedirect('/admin/system/roles');
+
+        $this->assertDatabaseHas('roles', [
+            'slug' => 'reviewer',
+        ]);
+    }
+
+    public function test_save_and_close_returns_to_roles_index_after_update(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $role = Role::factory()->create([
+            'name' => 'Old name',
+            'slug' => 'old-name',
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->put("/admin/system/roles/{$role->id}", [
+                'name' => 'Renamed role',
+                'save_and_close' => '1',
+            ])
+            ->assertRedirect('/admin/system/roles');
+    }
+
+    public function test_role_name_cannot_exceed_120_characters(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->postJson('/admin/system/roles', [
+                'name' => str_repeat('a', 121),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_role_description_cannot_exceed_250_characters(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->postJson('/admin/system/roles', [
+                'name' => 'Valid name',
+                'description' => str_repeat('a', 251),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['description']);
     }
 
     public function test_role_with_users_cannot_be_deleted(): void

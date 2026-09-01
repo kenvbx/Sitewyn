@@ -19,9 +19,11 @@ class StoreRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            // Match the Botble-style role form counters (0/120 name, 0/250
+            // description); seeded role names are well below these limits.
+            'name' => ['required', 'string', 'max:120'],
             'slug' => ['nullable', 'string', 'max:255', 'alpha_dash:ascii', Rule::unique('roles', 'slug')],
-            'description' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:250'],
             'permissions' => ['array'],
             'permissions.*' => ['string', Rule::in(app(PermissionRegistry::class)->all()->pluck('key')->all())],
         ];

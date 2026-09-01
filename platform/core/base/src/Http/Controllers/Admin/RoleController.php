@@ -3,6 +3,7 @@
 namespace Sitewyn\Core\Base\Http\Controllers\Admin;
 
 use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
@@ -36,7 +37,7 @@ class RoleController extends Controller
 
         return view('core/base::admin.roles.create', [
             'role' => new Role,
-            'permissionGroups' => $this->permissionGroups(),
+            'permissionTree' => $this->permissionTree(),
             'selectedPermissions' => [],
         ]);
     }
@@ -49,8 +50,7 @@ class RoleController extends Controller
         $role->permissions()->sync($this->permissionIds($request->validated('permissions', [])));
         admin_flash()->success(__('Role created successfully.'));
 
-        return redirect()
-            ->route('admin.system.roles.index');
+        return $this->saveRedirect($request, $role);
     }
 
     public function edit(Role $role): View
@@ -59,7 +59,7 @@ class RoleController extends Controller
 
         return view('core/base::admin.roles.edit', [
             'role' => $role,
-            'permissionGroups' => $this->permissionGroups(),
+            'permissionTree' => $this->permissionTree(),
             'selectedPermissions' => $role->permissions()->pluck('key')->all(),
         ]);
     }
@@ -72,8 +72,7 @@ class RoleController extends Controller
         $role->permissions()->sync($this->permissionIds($request->validated('permissions', [])));
         admin_flash()->success(__('Role updated successfully.'));
 
-        return redirect()
-            ->route('admin.system.roles.edit', $role);
+        return $this->saveRedirect($request, $role);
     }
 
     public function destroy(Role $role): RedirectResponse
@@ -132,14 +131,36 @@ class RoleController extends Controller
     }
 
     /**
-     * @return Collection<string, Collection<int, Permission>>
+     * "Save" keeps working on the saved role, "Save and close" (hidden
+     * save_and_close input set by the form footer) returns to the index.
      */
-    private function permissionGroups()
+    private function saveRedirect(FormRequest $request, Role $role): RedirectResponse
+    {
+        if ($request->boolean('save_and_close')) {
+            return redirect()
+                ->route('admin.system.roles.index');
+        }
+
+        return redirect()
+            ->route('admin.system.roles.edit', $role);
+    }
+
+    /**
+     * Permission flags tree for the role form: module → feature group →
+     * permissions, mirroring how the registry declares them.
+     *
+     * @return Collection<string, Collection<string, Collection<int, Permission>>>
+     */
+    private function permissionTree(): Collection
     {
         return Permission::query()
+            ->orderBy('module')
             ->orderBy('group')
             ->orderBy('key')
             ->get()
-            ->groupBy(fn (Permission $permission): string => $permission->group ?: 'ungrouped');
+            ->groupBy(fn (Permission $permission): string => $permission->module)
+            ->map(fn (Collection $modulePermissions): Collection => $modulePermissions->groupBy(
+                fn (Permission $permission): string => $permission->group ?: 'ungrouped',
+            ));
     }
 }

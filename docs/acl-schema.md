@@ -239,6 +239,30 @@ keys are unchanged by the move. The controller
 syncs registered permissions before rendering or saving so permission checkboxes
 stay aligned with module declarations.
 
+### Role form permission flags
+
+The create and edit forms are reworked to mirror the Botble role form. The
+"Permission Flags" card renders the registry as a three-level tree:
+module badges (green, e.g. Core, Pages, Blog, Media) → feature group badges
+(orange, e.g. Users, Roles, Posts) → individual permission checkboxes, laid
+out in a three-column grid. Every module and group has a collapse toggle plus
+a master checkbox with checked/indeterminate/unchecked state; the card header
+adds a select-all checkbox, an "All Permissions" shortcut, and
+Collapse all / Expand all links. Groups render expanded by default. All
+behavior is dependency-free vanilla JavaScript pushed via `@once @push('scripts')`.
+
+The footer has Cancel (back to the index), Save (keeps working on the saved
+role — after create it lands on the new role's edit page), and Save and close
+(primary — returns to the index via the hidden `save_and_close` input read by
+the controller). Name and description use Botble-style limits of 120/250
+characters with live counters next to the labels; the server rules match.
+
+Deviations from the Botble sample, on purpose:
+
+- The "Is admin" and "Is default" toggles are omitted: Sitewyn has no matching
+  role columns, and super admin is a user flag (`users.is_super_admin`).
+- The slug input is kept so admins can still override the auto-generated slug.
+
 ## User Administration
 
 P1-09 adds admin CRUD screens for users:
