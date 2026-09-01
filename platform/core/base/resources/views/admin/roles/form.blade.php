@@ -56,111 +56,110 @@
           <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
         @enderror
 
-        {{-- Permission flags tree cloned 1:1 from Botble's
-             core/acl::roles.permissions view: same structure, classes and
-             ids (list-feature, #auto-checkboxes, #mainNode, li.collapsed,
-             nested badges primary/yellow/cyan/lime/purple). The master
-             checkbox (#expandCollapseAllTree) sits in the card header per
-             the project owner's instruction, so the li#mainNode wrapper
-             keeps only its nested ul — the .permissions-tree class on it
-             is what Botble's daredevel-tree CSS rules (core.css) target.
-             Data-only differences: flags come from the Sitewyn permission
-             registry (keys split on dots into path segments), real node
-             checkboxes submit the original key as permissions[] (the
-             reference submits flags[]), and grouping nodes have no
-             name/value because their dot paths are not submittable
-             permissions. --}}
-        <ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">
-          <li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">
-            <ul class="p-0 list-unstyled">
-              @foreach ($children['root'] as $elementKey => $element)
-                <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $elementKey }}">
+        {{-- Permission flags tree cloned 1:1 from the rendered ACL roles
+             screen of the current Botble (div.permissions-tree with
+             ul.parent_tree module cards — data-name="foo" ships verbatim
+             in Botble's markup): each card is li.permissions-item with a
+             div.permissions-header and a ul.row.permissions-body of
+             feature groups. The hitarea divs, expandable/collapsable
+             classes, display:none on nested lists and the +/- sprites are
+             added at runtime by the classic jquery-treeview plugin — the
+             same plugin Botble binds in its acl role.js — exactly like on
+             the reference site, so the blade renders the plain lists the
+             plugin expects. Data-only differences: the module cards,
+             features and leaves come from the Sitewyn permission
+             registry; module and grouping checkboxes have no name (their
+             paths are not submittable permissions) while real permission
+             checkboxes submit the original key as permissions[]. --}}
+        <div class="permissions-tree" id="checkboxes-permisstions" data-name="foo">
+          @foreach ($modules as $moduleIndex => $module)
+            <ul class="parent_tree m-0 p-0 list-unstyled" id="node{{ $moduleIndex }}">
+              <li class="permissions-item list-unstyled">
+                <div class="permissions-header">
                   <label class="form-check">
-                    @if ($flags[$element]['permission'])
-                      <input type="checkbox" id="checkSelect{{ $elementKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$element]['flag'] }}" @checked(in_array($flags[$element]['flag'], old('permissions', $active), true))>
-                    @else
-                      <input type="checkbox" id="checkSelect{{ $elementKey }}" class="form-check-input">
-                    @endif
+                    <input type="checkbox" id="checkbox_one_{{ $moduleIndex }}" class="form-check-input check-success">
                     <span class="form-check-label">
-                      <span class="badge bg-primary-lt">{{ $flags[$element]['name'] }}</span>
+                      <span class="badge bg-success-lt">{{ $module['name'] }}</span>
                     </span>
                   </label>
-                  @if (isset($children[$element]))
-                    <ul class="list-unstyled">
-                      @foreach ($children[$element] as $subKey => $subElements)
-                        <li class="collapsed mx-0" style="background-color: inherit" id="node_sub_{{ $elementKey }}_{{ $subKey }}">
-                          <label class="form-check">
-                            @if ($flags[$subElements]['permission'])
-                              <input type="checkbox" id="checkSelect_sub_{{ $elementKey }}_{{ $subKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$subElements]['flag'] }}" @checked(in_array($flags[$subElements]['flag'], old('permissions', $active), true))>
-                            @else
-                              <input type="checkbox" id="checkSelect_sub_{{ $elementKey }}_{{ $subKey }}" class="form-check-input">
-                            @endif
-                            <span class="form-check-label">
-                              <span class="badge bg-yellow-lt">{{ $flags[$subElements]['name'] }}</span>
-                            </span>
-                          </label>
-                          @if (isset($children[$subElements]))
-                            <ul class="list-unstyled">
-                              @foreach ($children[$subElements] as $subSubKey => $subSubElements)
-                                <li class="collapsed mx-0" style="background-color: inherit" id="node_sub_sub_{{ $subSubKey }}">
-                                  <label class="form-check">
-                                    @if ($flags[$subSubElements]['permission'])
-                                      <input type="checkbox" id="checkSelect_sub_sub{{ $subSubKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$subSubElements]['flag'] }}" @checked(in_array($flags[$subSubElements]['flag'], old('permissions', $active), true))>
-                                    @else
-                                      <input type="checkbox" id="checkSelect_sub_sub{{ $subSubKey }}" class="form-check-input">
-                                    @endif
-                                    <span class="form-check-label">
-                                      <span class="badge bg-cyan-lt">{{ $flags[$subSubElements]['name'] }}</span>
-                                    </span>
-                                  </label>
-                                  @if (isset($children[$subSubElements]))
-                                    <ul class="list-unstyled">
-                                      @foreach ($children[$subSubElements] as $grandChildrenKey => $grandChildrenElements)
-                                        <li class="collapsed mx-0" style="background-color: inherit" id="node_grand_child{{ $grandChildrenKey }}">
-                                          <label class="form-check">
-                                            @if ($flags[$grandChildrenElements]['permission'])
-                                              <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$grandChildrenElements]['flag'] }}" @checked(in_array($flags[$grandChildrenElements]['flag'], old('permissions', $active), true))>
-                                            @else
-                                              <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKey }}" class="form-check-input">
-                                            @endif
-                                            <span class="form-check-label">
-                                              <span class="badge bg-lime-lt">{{ $flags[$grandChildrenElements]['name'] }}</span>
-                                            </span>
-                                          </label>
-                                          @if (isset($children[$grandChildrenElements]))
-                                            <ul class="list-unstyled">
-                                              @foreach ($children[$grandChildrenElements] as $grandChildrenKeySub => $greatGrandChildrenElements)
-                                                <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $grandChildrenKey }}">
-                                                  <label class="form-check">
-                                                    @if ($flags[$grandChildrenElements]['permission'])
-                                                      <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKeySub }}" name="permissions[]" class="form-check-input" value="{{ $flags[$grandChildrenElements]['flag'] }}" @checked(in_array($flags[$grandChildrenElements]['flag'], old('permissions', $active), true))>
-                                                    @else
-                                                      <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKeySub }}" class="form-check-input">
-                                                    @endif
-                                                    <span class="form-check-label">
-                                                      <span class="badge bg-purple-lt">{{ $flags[$grandChildrenElements]['name'] }}</span>
-                                                    </span>
-                                                  </label>
-                                              @endforeach
-                                            </ul>
-                                          @endif
-                                        </li>
-                                      @endforeach
-                                    </ul>
-                                  @endif
-                                </li>
-                              @endforeach
-                            </ul>
+                </div>
+                <ul class="row permissions-body has-children">
+                  @foreach ($module['features'] as $featureIndex => $feature)
+                    @if (isset($feature['leaf']))
+                      {{-- Single-action feature (Settings/Plugins/Backups/
+                           Menus/Widgets): the feature li holds the leaf
+                           directly — no hitarea, no badge. --}}
+                      <li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_{{ $moduleIndex }}_{{ $featureIndex }}">
+                        <label class="form-check">
+                          <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" name="permissions[]" class="form-check-input" value="{{ $feature['leaf']['key'] }}" @checked(in_array($feature['leaf']['key'], old('permissions', $active), true))>
+                          <span class="form-check-label">{{ $feature['leaf']['text'] }}</span>
+                        </label>
+                      </li>
+                    @elseif (empty($feature['children']))
+                      {{-- Real-permission feature without leaves
+                           (Permissions/Audit): flat li, badge stays. --}}
+                      <li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_{{ $moduleIndex }}_{{ $featureIndex }}">
+                        <label class="form-check">
+                          <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" name="permissions[]" class="form-check-input" value="{{ $feature['permission'] }}" @checked(in_array($feature['permission'], old('permissions', $active), true))>
+                          <span class="form-check-label">
+                            <span class="badge bg-primary-lt">{{ $feature['name'] }}</span>
+                          </span>
+                        </label>
+                      </li>
+                    @else
+                      <li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_{{ $moduleIndex }}_{{ $featureIndex }}">
+                        <label class="form-check">
+                          @if ($feature['permission'])
+                            <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" name="permissions[]" class="form-check-input" value="{{ $feature['permission'] }}" @checked(in_array($feature['permission'], old('permissions', $active), true))>
+                          @else
+                            <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" class="form-check-input">
                           @endif
-                        </li>
-                      @endforeach
-                    </ul>
-                  @endif
-                </li>
-              @endforeach
+                          <span class="form-check-label">
+                            <span class="badge bg-primary-lt">{{ $feature['name'] }}</span>
+                          </span>
+                        </label>
+                        <ul class="list-unstyled">
+                          @foreach ($feature['children'] as $subIndex => $child)
+                            @if (isset($child['name']))
+                              {{-- Sub level (only Core → System Users):
+                                   yellow badge; the grouping checkbox
+                                   submits nothing. --}}
+                              <li style="background-color: inherit" id="node_sub_sub_{{ $subIndex }}">
+                                <label class="form-check">
+                                  <input type="checkbox" id="checkbox_three_{{ $subIndex }}" class="form-check-input check-yellow">
+                                  <span class="form-check-label">
+                                    <span class="badge bg-yellow-lt">{{ $child['name'] }}</span>
+                                  </span>
+                                </label>
+                                <ul class="list-unstyled">
+                                  @foreach ($child['children'] as $leafIndex => $leaf)
+                                    <li style="background-color: inherit" id="node_grand_child{{ $leafIndex }}">
+                                      <label class="form-check">
+                                        <input type="checkbox" id="checkbox_four_{{ $leafIndex }}" name="permissions[]" class="form-check-input" value="{{ $leaf['key'] }}" @checked(in_array($leaf['key'], old('permissions', $active), true))>
+                                        <span class="form-check-label">{{ $leaf['text'] }}</span>
+                                      </label>
+                                    </li>
+                                  @endforeach
+                                </ul>
+                              </li>
+                            @else
+                              <li style="background-color: inherit" id="node_sub_sub_{{ $subIndex }}">
+                                <label class="form-check">
+                                  <input type="checkbox" id="checkbox_three_{{ $subIndex }}" name="permissions[]" class="form-check-input" value="{{ $child['key'] }}" @checked(in_array($child['key'], old('permissions', $active), true))>
+                                  <span class="form-check-label">{{ $child['text'] }}</span>
+                                </label>
+                              </li>
+                            @endif
+                          @endforeach
+                        </ul>
+                      </li>
+                    @endif
+                  @endforeach
+                </ul>
+              </li>
             </ul>
-          </li>
-        </ul>
+          @endforeach
+        </div>
       </div>
 
       <x-slot:footer>
@@ -177,11 +176,13 @@
 
 @once
   @push('scripts')
-    {{-- Botble's RoleForm loads jquery-ui + jqueryTree styles and scripts
-         for this screen; the local copies live under
-         public/vendor/core-base/libraries (same files Botble publishes). --}}
-    <link href="{{ asset('vendor/core-base/libraries/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet" />
-    <link href="{{ asset('vendor/core-base/libraries/jquery-tree/jquery.tree.min.css') }}" rel="stylesheet" />
+    {{-- Botble's rendered ACL roles screen loads the classic
+         jquery-treeview plugin (registered for this tree in Botble's
+         platform/core/base/config/assets.php) plus jQuery — the local
+         copies live under public/vendor/core-base/libraries (same files
+         Botble publishes). The libraries the previous markup needed are
+         gone with it. --}}
+    <link href="{{ asset('vendor/core-base/libraries/jquery-treeview/jquery.treeview.min.css') }}" rel="stylesheet" />
 
     <script>
       ;(function () {
@@ -240,45 +241,59 @@
     </script>
 
     <script src="{{ asset('vendor/core-base/libraries/jquery.min.js') }}"></script>
-    <script src="{{ asset('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js') }}"></script>
-    <script src="{{ asset('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js') }}"></script>
+    <script src="{{ asset('vendor/core-base/libraries/jquery-treeview/jquery.treeview.min.js') }}"></script>
     <script>
-      // Tree behavior cloned 1:1 from Botble core/acl resources/js/role.js.
-      // DEVIATION per the project owner's instruction: Botble ships the
-      // header "All Permissions" master (#expandCollapseAllTree) inert
-      // (nothing binds it) and carries a dead legacy master binding whose
-      // markup no longer exists — Sitewyn drops that dead binding and
-      // wires the master up (see wireAllPermissionsMaster below).
+      // Tree init + checkbox cascade cloned 1:1 from Botble core/acl
+      // resources/js/role.js: the plugin turns every .has-children list
+      // into the hitarea/expandable tree (all levels collapsed by
+      // default, "medium" height animation, +/- sprites from the plugin
+      // CSS), and clicking any checkbox checks its descendants and syncs
+      // the parent group checkboxes (a fully-checked group checks its
+      // parent, a partially-checked one clears it).
       class Role {
         init() {
-          $('#auto-checkboxes li').tree({
-            onCheck: {
-              node: 'expand',
-            },
-            onUncheck: {
-              node: 'expand',
-            },
-            dnd: false,
-            selectable: false,
+          let $checkboxes = $('.has-children')
+          if ($checkboxes.length) {
+            $checkboxes.map((index, value) => {
+              $(value).treeview({
+                collapsed: true,
+                animated: 'medium',
+                control: '#sidetreecontrol',
+                persist: 'location',
+              })
+            })
+          }
+
+          $('#checkboxes-permisstions :checkbox').on('click', function (event) {
+            event.stopPropagation()
+            let _self = $(event.currentTarget)
+            let checked = _self.is(':checked'),
+              parent_li = _self.closest('li'),
+              parent_uls = parent_li.parents('ul')
+            parent_li.find(':checkbox').prop('checked', checked)
+            parent_uls.each(function () {
+              let parent_ul = $(this),
+                parent_state = parent_ul.find(':checkbox').length == parent_ul.find(':checked').length
+              parent_ul.siblings(':checkbox').prop('checked', parent_state)
+            })
           })
 
           this.wireAllPermissionsMaster()
         }
 
-        // DEVIATION from Botble (its master checkbox is inert): functional
-        // master per the project owner's instruction. Checking/unchecking
-        // the master sets every checkbox in the tree — permission leaves
-        // (name="permissions[]") and grouping nodes alike — via prop()
-        // only, without .change() triggers, so the tree plugin's check
-        // propagation/expand logic is never re-entered. The reverse sync
-        // uses a delegated change listener, which also fires for the
-        // plugin's own .change() triggers while it propagates checks down
-        // (its defaults) — the last event always sees the final DOM state.
-        // The master then reflects the tree: checked when all boxes are
-        // checked, indeterminate when some are, unchecked when none are.
+        // DEVIATION from Botble (its #allTreeChecked master is a flat
+        // check-all without indeterminate state, and the card-header
+        // master is a Sitewyn placement per the project owner's
+        // instruction): the header "All Permissions" master sets every
+        // checkbox in the tree — permission leaves (name="permissions[]")
+        // and grouping nodes without a name alike — via prop() only,
+        // without .click() triggers, so the cascade above is never
+        // re-entered. The master then reflects the tree: checked when all
+        // boxes are checked, indeterminate when some are, unchecked when
+        // none are.
         wireAllPermissionsMaster() {
           const master = $('#expandCollapseAllTree')
-          const tree = $('#auto-checkboxes')
+          const tree = $('#checkboxes-permisstions')
 
           const syncMaster = () => {
             const boxes = tree.find('input[type="checkbox"]')
@@ -304,17 +319,30 @@
       })
     </script>
     <style>
-      /* Botble's permission flags tree rules (platform/core/base/public/css/
-         core.css), copied verbatim. The --bb-border-* custom properties the
-         rules consume are defined in Botble's core.css ":root,[data-bs-theme=
-         light]" and "[data-bs-theme=dark]" blocks — Sitewyn's Tabler build
-         does not ship them, so those values are copied verbatim too. */
-      :root, [data-bs-theme=light] { --bb-border-width: 1px; --bb-border-color: #dce1e7; }
-      [data-bs-theme=dark], body[data-bs-theme=dark] [data-bs-theme=light] { --bb-border-color: #25384f; }
-      .permissions-tree .daredevel-tree{border:none!important;border-left:var(--bb-border-width) solid var(--bb-border-color)!important;padding-top:5px}
-      .permissions-tree .daredevel-tree>div{padding-left:10px}
-      .permissions-tree .daredevel-tree:not(:has(ul))>.daredevel-tree-anchor{display:none}
-      .permissions-tree .daredevel-tree-anchor{top:.5rem!important}
+      /* Botble's ACL permissions tree rules for the div.permissions-tree
+         markup (the .permissions-tree block of the current Botble's
+         core.css), copied verbatim in source order. The old markup's
+         tree rules are gone with it, and the check-blue/danger/secondary
+         variants (never rendered here) are left out — check-success and
+         check-yellow are the two the tree uses. The --bb-bg-* custom
+         properties the dark-mode rules consume are defined in Botble's
+         core.css ":root,[data-bs-theme=light]" and "[data-bs-theme=dark]"
+         blocks (resolved from --bb-white/--bb-gray-900/--bb-gray-800) —
+         Sitewyn's Tabler build does not ship them, so those values are
+         copied verbatim too. */
+      [data-bs-theme=dark] .permissions-tree .permissions-item{background-color:var(--bb-bg-forms)}
+      [data-bs-theme=dark] .permissions-tree .permissions-item .permissions-header{background-color:var(--bb-bg-surface);border-bottom:1px solid var(--bb-bg-surface)}
+      .permissions-tree .permissions-item{background-color:#f6f8fb;border-radius:4px;margin-bottom:10px;padding:0}
+      .permissions-tree .permissions-item .permissions-body,.permissions-tree .permissions-item .permissions-header{padding:10px}
+      .permissions-tree .permissions-item .permissions-body{padding:10px 20px}
+      .permissions-tree .permissions-item .permissions-header{background-color:#f2f5f7;border-bottom:1px solid #cfd7e0}
+      .permissions-tree .single-node li{margin:0;padding:3px 0 3px 18px}
+      .permissions-tree .form-check .form-check-input.check-success:checked{background-color:#198754}
+      .permissions-tree .form-check .form-check-input.check-success:focus{border-color:#198754}
+      .permissions-tree .form-check .form-check-input.check-yellow:checked{background-color:#efc656}
+      .permissions-tree .form-check .form-check-input.check-yellow:focus{border-color:#efc656}
+      :root, [data-bs-theme=light] { --bb-bg-forms: #fff; --bb-bg-surface: #fff; }
+      [data-bs-theme=dark] { --bb-bg-forms: #111827; --bb-bg-surface: #1f2937; }
     </style>
   @endpush
 @endonce

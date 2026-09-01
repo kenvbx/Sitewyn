@@ -108,62 +108,112 @@ class AdminRoleCrudTest extends TestCase
             ->get('/admin/system/roles/create')
             ->assertOk()
             ->assertSee('Permission Flags')
-            // Botble tree markup cloned 1:1 from core/acl::roles.permissions:
-            // ul.list-feature#auto-checkboxes holding li#mainNode (the
-            // .permissions-tree hook Botble's daredevel-tree CSS rules
-            // target) and nested li.collapsed nodes. The master
-            // "All Permissions" checkbox sits in the card header (moved
-            // there per the project owner's instruction) but keeps Botble's
-            // x-core::form.checkbox markup — label.form-check with the
-            // ms-auto utility as the only placement glue. The master is
-            // wired functional in JS — a deviation from Botble, where both
-            // the master and the .checker binding are inert legacy.
+            // Botble tree markup cloned 1:1 from the rendered ACL roles
+            // screen of the current Botble: div.permissions-tree with
+            // ul.parent_tree module cards (li.permissions-item +
+            // div.permissions-header + ul.row.permissions-body) and
+            // nested feature/sub/leaf lists. The hitarea divs,
+            // expandable/collapsable classes and display:none are added
+            // at runtime by the classic jquery-treeview plugin Botble
+            // binds in its acl role.js, so the blade ships the plain
+            // lists the plugin expects. The master "All Permissions"
+            // checkbox sits in the card header (moved there per the
+            // project owner's instruction) and is wired functional in JS
+            // — a deviation from Botble, where the tree master is a flat
+            // check-all rendered inside the card body.
             // (data-name="foo" ships verbatim in Botble's markup.)
             ->assertSee('<label class="ms-auto form-check">', false)
             ->assertSee('id="expandCollapseAllTree" class="form-check-input label label-default allTree"', false)
             ->assertSee('<span class="form-check-label">All Permissions</span>', false)
-            ->assertSee('<li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">', false)
-            ->assertSee('<ul class="p-0 list-unstyled">', false)
-            // Botble core.css daredevel-tree rules verbatim, plus the
-            // --bb-border-* values they consume (copied from Botble's
-            // core.css :root / dark blocks).
-            ->assertSee('--bb-border-width: 1px', false)
-            ->assertSee('--bb-border-color: #dce1e7', false)
-            ->assertSee('--bb-border-color: #25384f', false)
-            ->assertSee('.permissions-tree .daredevel-tree{border:none!important;border-left:var(--bb-border-width) solid var(--bb-border-color)!important;padding-top:5px}', false)
-            ->assertSee('.permissions-tree .daredevel-tree:not(:has(ul))>.daredevel-tree-anchor{display:none}', false)
-            ->assertSee('All Permissions')
-            ->assertSee('<ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">', false)
-            ->assertSee('li class="collapsed mx-0" style="background-color: inherit" id="node0"', false)
-            ->assertSee('id="checkSelect0"', false)
-            // Badge colors follow Botble's depth ladder: root nodes use
-            // bg-*-lt primary badges, second level yellow, third level cyan.
+            ->assertSee('<div class="permissions-tree" id="checkboxes-permisstions" data-name="foo">', false)
+            ->assertSee('<ul class="parent_tree m-0 p-0 list-unstyled" id="node0">', false)
+            ->assertSee('<li class="permissions-item list-unstyled">', false)
+            ->assertSee('<div class="permissions-header">', false)
+            ->assertSee('<ul class="row permissions-body has-children">', false)
+            // Module cards follow the registry modules: Core / Pages /
+            // Blog / Media, success badges, checkbox without name (the
+            // module is a grouping node, not a permission).
+            ->assertSee('<span class="badge bg-success-lt">Core</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">Pages</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">Blog</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">Media</span>', false)
+            ->assertSee('<input type="checkbox" id="checkbox_one_0" class="form-check-input check-success">', false)
+            // Feature groups render as col-4 items with primary badges;
+            // Botble's node ids (node_sub_m_f / node_sub_sub_n /
+            // node_grand_childn) and checkbox ids (checkbox_two/three/
+            // four) are preserved. System Users is the only sub level
+            // (yellow badge, grouping checkbox without name).
+            ->assertSee('<li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_0_0">', false)
+            ->assertSee('<li style="background-color: inherit" id="node_sub_sub_0">', false)
+            ->assertSee('<li style="background-color: inherit" id="node_grand_child0">', false)
+            ->assertSee('<input type="checkbox" id="checkbox_two_0_0" name="permissions[]" class="form-check-input" value="users.index"', false)
+            ->assertSee('<input type="checkbox" id="checkbox_two_0_1" class="form-check-input">', false)
+            ->assertSee('<input type="checkbox" id="checkbox_three_0" class="form-check-input check-yellow">', false)
             ->assertSee('<span class="badge bg-primary-lt">Users</span>', false)
             ->assertSee('<span class="badge bg-primary-lt">System</span>', false)
-            ->assertSee('<span class="badge bg-yellow-lt">View users</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Roles</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Posts</span>', false)
             ->assertSee('<span class="badge bg-yellow-lt">System Users</span>', false)
-            ->assertSee('<span class="badge bg-cyan-lt">View team users</span>', false)
             // Real permission checkboxes submit the original key via
-            // permissions[]; grouping nodes (Users, System Users) submit
-            // nothing because their dot paths are not permissions.
-            ->assertSee('name="permissions[]" class="form-check-input" value="users.index"', false)
-            ->assertSee('name="permissions[]" class="form-check-input" value="roles.index"', false)
+            // permissions[]; the group's .index permission rides on the
+            // feature checkbox, remaining actions and single-action
+            // features (Settings/Plugins/Backups/Menus/Widgets) render as
+            // leaves with the short verbs Botble's leaves use.
             ->assertSee('name="permissions[]" class="form-check-input" value="page.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="post.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="category.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="tag.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="media.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="roles.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="permissions.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="audit.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="media.upload"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="system.users.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="system.users.create"', false)
-            ->assertSee('id="checkSelect_sub_11_0" class="form-check-input">', false)
-            // Botble loads jquery-ui + jqueryTree + role.js for this screen;
-            // the Sitewyn push loads the same libraries and init code.
+            ->assertSee('name="permissions[]" class="form-check-input" value="menus.manage"', false)
+            ->assertSee('<span class="form-check-label">Create</span>', false)
+            ->assertSee('<span class="form-check-label">Edit</span>', false)
+            ->assertSee('<span class="form-check-label">Delete</span>', false)
+            ->assertSee('<span class="form-check-label">View list</span>', false)
+            ->assertSee('<span class="form-check-label">Manage</span>', false)
+            ->assertSee('<span class="form-check-label">Upload</span>', false)
+            // Botble core.css .permissions-tree rules verbatim (the
+            // .daredevel-tree rules of the old markup are gone with it),
+            // plus the --bb-bg-* values the dark-mode rules consume
+            // (copied from Botble's core.css :root / dark blocks).
+            ->assertSee('[data-bs-theme=dark] .permissions-tree .permissions-item{background-color:var(--bb-bg-forms)}', false)
+            ->assertSee('.permissions-tree .permissions-item{background-color:#f6f8fb;border-radius:4px;margin-bottom:10px;padding:0}', false)
+            ->assertSee('.permissions-tree .permissions-item .permissions-header{background-color:#f2f5f7;border-bottom:1px solid #cfd7e0}', false)
+            ->assertSee('.permissions-tree .form-check .form-check-input.check-success:checked{background-color:#198754}', false)
+            ->assertSee('.permissions-tree .form-check .form-check-input.check-yellow:checked{background-color:#efc656}', false)
+            ->assertSee('--bb-bg-forms: #fff', false)
+            ->assertSee('--bb-bg-forms: #111827', false)
+            // Botble loads jQuery + the classic jquery-treeview plugin for
+            // this tree and binds its acl role.js init + checkbox
+            // cascade; the Sitewyn push loads the same libraries and
+            // init code.
             ->assertSee('vendor/core-base/libraries/jquery.min.js', false)
-            ->assertSee('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js', false)
-            ->assertSee('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js', false)
-            ->assertSee('\'#auto-checkboxes li\').tree(', false)
-            // The header master is wired up (deviation from inert Botble —
-            // JS behavior itself is browser-only, untestable here); the
-            // dead #mainNode .checker binding is dropped.
+            ->assertSee('vendor/core-base/libraries/jquery-treeview/jquery.treeview.min.css', false)
+            ->assertSee('vendor/core-base/libraries/jquery-treeview/jquery.treeview.min.js', false)
+            ->assertSee('$(value).treeview({', false)
+            ->assertSee("$('#checkboxes-permisstions :checkbox').on('click', function (event) {", false)
+            // The header master is wired up (deviation from flat Botble
+            // master — JS behavior itself is browser-only, untestable
+            // here).
             ->assertSee('\'#expandCollapseAllTree\')', false)
-            ->assertDontSee('\'#mainNode .checker\'', false)
-            // The previous in-house tree UI is gone completely.
+            // The old daredevel jquery-tree markup and its libraries are
+            // gone completely, along with the previous in-house tree UI.
+            ->assertDontSee('mainNode', false)
+            ->assertDontSee('auto-checkboxes', false)
+            ->assertDontSee('daredevel', false)
+            ->assertDontSee('jquery-ui', false)
+            ->assertDontSee('list-feature', false)
+            ->assertDontSee('collapsed mx-0', false)
+            ->assertDontSee('checkSelect', false)
+            ->assertDontSee('flags[]', false)
+            ->assertDontSee('bg-cyan-lt', false)
+            ->assertDontSee('bg-lime-lt', false)
+            ->assertDontSee('bg-purple-lt', false)
             ->assertDontSee('data-module-card', false)
             ->assertDontSee('data-module-body', false)
             ->assertDontSee('data-module-master', false)

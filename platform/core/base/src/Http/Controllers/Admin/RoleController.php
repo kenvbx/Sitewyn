@@ -6,7 +6,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Sitewyn\Core\Base\Http\Requests\Admin\StoreRoleRequest;
@@ -40,8 +39,7 @@ class RoleController extends Controller
 
         return view('core/base::admin.roles.create', [
             'role' => new Role,
-            'flags' => $tree['flags'],
-            'children' => $tree['children'],
+            'modules' => $tree,
             'active' => [],
         ]);
     }
@@ -65,8 +63,7 @@ class RoleController extends Controller
 
         return view('core/base::admin.roles.edit', [
             'role' => $role,
-            'flags' => $tree['flags'],
-            'children' => $tree['children'],
+            'modules' => $tree,
             'active' => $role->permissions()->pluck('key')->all(),
         ]);
     }
@@ -153,89 +150,161 @@ class RoleController extends Controller
     }
 
     /**
-     * Permission flags data for the role form, built the same way Botble's
-     * ACL RoleForm builds its tree: every permission key is split on dots
-     * into path segments ("system.users.create" → system → users → create),
-     * each segment becomes a flag with a parent flag, and children are
-     * grouped by that parent with the algorithm Botble uses. Grouping flags
-     * have no permission behind them (their checkboxes submit nothing);
-     * real flags carry the original registry key.
+     * Permission flags tree for the role form, matching the rendered Botble
+     * ACL permissions screen: one card per registry module (Core / Pages /
+     * Blog / Media), one feature item per registry group inside it, the
+     * group's *.index permission riding on the feature checkbox and the
+     * remaining actions as plain leaves. The registry stays the single
+     * source of permission data — the maps below only carry presentation
+     * details (display names, card/group order, leaf verbs) Botble encodes
+     * in its permission translations.
      *
-     * @return array{flags: array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>, children: array<string, list<string>>}
+     * Shape (what the role form's permissions tree renders):
+     *   [
+     *     'name' => 'Core',                       // module card (bg-success-lt)
+     *     'features' => [
+     *       // feature with real .index permission + action leaves:
+     *       ['name' => 'Users', 'permission' => 'users.index', 'children' => [
+     *         ['key' => 'users.create', 'text' => 'Create'], ...
+     *       ]],
+     *       // grouping feature without permission behind it, holding the
+     *       // only sub level in the tree (yellow badge):
+     *       ['name' => 'System', 'permission' => null, 'children' => [
+     *         ['name' => 'System Users', 'permission' => null, 'children' => [...]],
+     *       ]],
+     *       // single-permission feature rendered flat with its badge:
+     *       ['name' => 'Permissions', 'permission' => 'permissions.index', 'children' => []],
+     *       // single-action feature rendered as a bare leaf:
+     *       ['leaf' => ['key' => 'menus.manage', 'text' => 'Manage']],
+     *     ],
+     *   ], ...
+     *
+     * @return list<array{name: string, features: list<array{name?: string, permission?: string|null, leaf?: array{key: string, text: string}, children?: list<array<string, mixed>}>}>
      */
     private function permissionTree(): array
     {
-        $flags = [];
+        $moduleNames = [
+            'core/base' => 'Core',
+            'package/page' => 'Pages',
+            'package/blog' => 'Blog',
+            'package/media' => 'Media',
+        ];
+
+        $moduleOrder = ['core/base' => 0, 'package/page' => 1, 'package/blog' => 2, 'package/media' => 3];
+
+        $groupOrder = [
+            'core/base' => ['users', 'system users', 'roles', 'permissions', 'audit', 'settings', 'plugins', 'backups', 'menus', 'widgets'],
+            'package/page' => ['page'],
+            'package/blog' => ['post', 'category', 'tag'],
+            'package/media' => ['media'],
+        ];
+
+        // Feature badge text per registry group (Str::headline fallback).
+        $featureNames = [
+            'users' => 'Users',
+            'roles' => 'Roles',
+            'permissions' => 'Permissions',
+            'audit' => 'Audit',
+            'page' => 'Pages',
+            'post' => 'Posts',
+            'category' => 'Categories',
+            'tag' => 'Tags',
+            'media' => 'Media',
+        ];
+
+        // Leaf verbs per action segment, mirroring the short verbs Botble's
+        // tree leaves use (Create/Edit/Delete/...).
+        $leafTexts = [
+            'index' => 'View list',
+            'create' => 'Create',
+            'edit' => 'Edit',
+            'delete' => 'Delete',
+            'upload' => 'Upload',
+            'manage' => 'Manage',
+        ];
+
+        // Registry permissions bucketed module → group → key (keys arrive
+        // sorted from the query, and groups inherit that order).
+        $grouped = [];
 
         foreach (Permission::query()->orderBy('key')->get() as $permission) {
-            $segments = explode('.', $permission->key);
-            $path = '';
-            $parent = 'root';
+            $grouped[$permission->module][$permission->group ?? ''][$permission->key] = $permission;
+        }
 
-            foreach (array_slice($segments, 0, -1) as $segment) {
-                $path = $path === '' ? $segment : $path.'.'.$segment;
-                $flags[$path] = [
-                    'flag' => $path,
-                    'name' => Str::headline(str_replace('.', ' ', $path)),
-                    'parent_flag' => $parent,
-                    'permission' => null,
+        $tree = [];
+
+        foreach (collect($grouped)
+            ->sortBy(fn (array $groups, string $module): int => $moduleOrder[$module] ?? count($moduleOrder), SORT_NUMERIC)
+            ->all() as $module => $groups) {
+            // Declared groups first in their display order, then any group
+            // registered later alphabetically.
+            $order = $groupOrder[$module] ?? [];
+
+            $orderedGroups = collect($order)
+                ->filter(fn (string $group): bool => isset($groups[$group]))
+                ->merge(
+                    collect($groups)
+                        ->keys()
+                        ->reject(fn (string $group): bool => in_array($group, $order, true))
+                        ->sort()
+                        ->values()
+                );
+
+            $features = [];
+
+            foreach ($orderedGroups as $group) {
+                $groupPermissions = collect($groups[$group])->values();
+                $leafOf = fn ($permission): array => [
+                    'key' => $permission->key,
+                    'text' => $leafTexts[Str::afterLast($permission->key, '.')] ?? $permission->name,
                 ];
-                $parent = $path;
+
+                if ($group === 'system users') {
+                    // The only sub level: a "System" feature whose single
+                    // yellow "System Users" node groups the system.users.*
+                    // leaves. Both checkboxes are grouping nodes (no name —
+                    // system.users is not a submittable permission).
+                    $features[] = [
+                        'name' => 'System',
+                        'permission' => null,
+                        'children' => [
+                            [
+                                'name' => 'System Users',
+                                'permission' => null,
+                                'children' => $groupPermissions->map($leafOf)->all(),
+                            ],
+                        ],
+                    ];
+
+                    continue;
+                }
+
+                if ($groupPermissions->count() === 1) {
+                    // Single-action features (Settings/Plugins/Backups/
+                    // Menus/Widgets) render flat: the feature li holds the
+                    // leaf directly, without hitarea or badge.
+                    $features[] = ['leaf' => $leafOf($groupPermissions->first())];
+
+                    continue;
+                }
+
+                $indexPermission = $groupPermissions->first(
+                    fn ($permission): bool => Str::afterLast($permission->key, '.') === 'index'
+                );
+
+                $features[] = [
+                    'name' => $featureNames[$group] ?? Str::headline($group),
+                    'permission' => $indexPermission?->key,
+                    'children' => $groupPermissions
+                        ->reject(fn ($permission): bool => $indexPermission !== null && $permission->key === $indexPermission->key)
+                        ->map($leafOf)
+                        ->all(),
+                ];
             }
 
-            $flags[$permission->key] = [
-                'flag' => $permission->key,
-                'name' => $permission->name ?: Str::headline(str_replace('.', ' ', end($segments))),
-                'parent_flag' => $parent,
-                'permission' => $permission->key,
-            ];
+            $tree[] = ['name' => $moduleNames[$module] ?? Str::headline($module), 'features' => $features];
         }
 
-        return [
-            'flags' => $flags,
-            'children' => $this->getPermissionTree($flags),
-        ];
-    }
-
-    /**
-     * Cloned from Botble's ACL RoleForm::getPermissionTree().
-     *
-     * @param  array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>  $permissions
-     * @return array<string, list<string>>
-     */
-    private function getPermissionTree(array $permissions): array
-    {
-        $sortedFlag = $permissions;
-        sort($sortedFlag);
-
-        $children['root'] = $this->getChildren('root', $sortedFlag);
-
-        foreach (array_keys($permissions) as $key) {
-            $childrenReturned = $this->getChildren($key, $permissions);
-            if (count($childrenReturned) > 0) {
-                $children[$key] = $childrenReturned;
-            }
-        }
-
-        return $children;
-    }
-
-    /**
-     * Cloned from Botble's ACL RoleForm::getChildren().
-     *
-     * @param  array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>  $flags
-     * @return list<string>
-     */
-    private function getChildren(string $parentFlag, array $flags): array
-    {
-        $newFlags = [];
-
-        foreach ($flags as $item) {
-            if (Arr::get($item, 'parent_flag', 'root') === $parentFlag) {
-                $newFlags[] = $item['flag'];
-            }
-        }
-
-        return $newFlags;
+        return $tree;
     }
 }
