@@ -2,10 +2,6 @@
 
 @section('title', 'Platform Administration - ' . config('app.name', 'Sitewyn') . ' Admin')
 
-@section('pretitle', 'System')
-
-@section('page-title', 'Platform Administration')
-
 @section('breadcrumbs')
   <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
   <li class="breadcrumb-item active" aria-current="page">Platform Administration</li>

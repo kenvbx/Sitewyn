@@ -25,7 +25,7 @@ class AdminPlatformTest extends TestCase
         $this->get('/admin/system')->assertRedirect('/admin/login');
     }
 
-    public function test_super_admin_sees_all_eleven_tool_cards(): void
+    public function test_super_admin_sees_all_ten_tool_cards(): void
     {
         $content = $this->actingAs($this->adminUser(), 'admin')
             ->get('/admin/system')
@@ -48,7 +48,7 @@ class AdminPlatformTest extends TestCase
             $this->assertStringContainsString($description, $content);
         }
 
-        $this->assertSame(11, substr_count($content, 'data-platform-card="'));
+        $this->assertSame(10, substr_count($content, 'data-platform-card="'));
     }
 
     public function test_users_card_links_to_the_team_surface(): void
@@ -60,16 +60,15 @@ class AdminPlatformTest extends TestCase
 
         // Card URLs are rendered verbatim (no route() helper).
         $this->assertStringContainsString('href="/admin/system/users"', $content);
-        $this->assertStringContainsString('href="/admin/users"', $content);
     }
 
     /**
      * Team gating: the Users card no longer follows the users.index
      * permission — it only shows to team members, and a users.index-only
-     * admin is not one. They do see the new Members card, which gates on
-     * users.index and links to /admin/users.
+     * admin is not one. Members management lives at /admin/users and is
+     * deliberately not part of this hub.
      */
-    public function test_user_with_users_index_only_sees_the_members_card(): void
+    public function test_user_with_users_index_only_sees_an_empty_hub(): void
     {
         $content = $this->actingAs($this->userWithPermissions(['users.index']), 'admin')
             ->get('/admin/system')
@@ -77,8 +76,8 @@ class AdminPlatformTest extends TestCase
             ->getContent();
 
         $this->assertStringNotContainsString('View and update your system users.', $content);
-        $this->assertStringContainsString('Manage non-team member accounts.', $content);
-        $this->assertSame(1, substr_count($content, 'data-platform-card="'));
+        $this->assertStringNotContainsString('Manage non-team member accounts.', $content);
+        $this->assertStringContainsString('No administration tools available for your account.', $content);
     }
 
     public function test_user_with_the_admin_role_sees_the_users_card(): void
