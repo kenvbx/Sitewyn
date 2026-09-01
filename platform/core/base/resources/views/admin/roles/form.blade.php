@@ -45,7 +45,7 @@
       <x-slot:header>
         <div class="d-flex align-items-center w-100">
           <h3 class="card-title mb-0">Permission Flags</h3>
-          <label class="form-check ms-auto">
+          <label class="ms-auto form-check form-check-inline m-0">
             <input type="checkbox" id="expandCollapseAllTree" class="label label-default allTree form-check-input">
             <span class="form-check-label">All Permissions</span>
           </label>
@@ -245,9 +245,12 @@
     <script src="{{ asset('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js') }}"></script>
     <script src="{{ asset('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js') }}"></script>
     <script>
-      // Behavior cloned 1:1 from Botble core/acl resources/js/role.js (the
-      // .checker binding is legacy there and matches markup that no longer
-      // exists — kept verbatim like Botble ships it).
+      // Tree behavior cloned 1:1 from Botble core/acl resources/js/role.js.
+      // DEVIATION per the project owner's instruction: Botble ships the
+      // header "All Permissions" master (#expandCollapseAllTree) inert
+      // (nothing binds it) and carries a dead #mainNode .checker binding
+      // whose markup no longer exists — Sitewyn drops the dead binding and
+      // wires the master up (see wireAllPermissionsMaster below).
       class Role {
         init() {
           $('#auto-checkboxes li').tree({
@@ -261,18 +264,40 @@
             selectable: false,
           })
 
-          $('#mainNode .checker').change((event) => {
-            let _self = $(event.currentTarget)
-            let set = _self.attr('data-set')
-            let checked = _self.is(':checked')
-            $(set).each((index, el) => {
-              if (checked) {
-                $(el).attr('checked', true)
-              } else {
-                $(el).attr('checked', false)
-              }
-            })
+          this.wireAllPermissionsMaster()
+        }
+
+        // DEVIATION from Botble (its master checkbox is inert): functional
+        // master per the project owner's instruction. Checking/unchecking
+        // the master sets every checkbox in the tree — permission leaves
+        // (name="permissions[]") and grouping nodes alike — via prop()
+        // only, without .change() triggers, so the tree plugin's check
+        // propagation/expand logic is never re-entered. The reverse sync
+        // uses a delegated change listener, which also fires for the
+        // plugin's own .change() triggers while it propagates checks down
+        // (its defaults) — the last event always sees the final DOM state.
+        // The master then reflects the tree: checked when all boxes are
+        // checked, indeterminate when some are, unchecked when none are.
+        wireAllPermissionsMaster() {
+          const master = $('#expandCollapseAllTree')
+          const tree = $('#auto-checkboxes')
+
+          const syncMaster = () => {
+            const boxes = tree.find('input[type="checkbox"]')
+            const checked = boxes.filter(':checked').length
+
+            master.prop('checked', boxes.length > 0 && checked === boxes.length)
+            master.prop('indeterminate', checked > 0 && checked < boxes.length)
+          }
+
+          master.on('change', () => {
+            tree.find('input[type="checkbox"]').prop('checked', master.is(':checked'))
+            syncMaster()
           })
+
+          tree.on('change', 'input[type="checkbox"]', syncMaster)
+
+          syncMaster()
         }
       }
 

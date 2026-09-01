@@ -111,9 +111,12 @@ class AdminRoleCrudTest extends TestCase
             // Botble tree markup cloned 1:1 from core/acl::roles.permissions:
             // ul.list-feature#auto-checkboxes holding nested li.collapsed
             // nodes; the master "All Permissions" checkbox sits in the card
-            // header (moved there per the project owner's instruction).
+            // header (moved there per the project owner's instruction) with
+            // Tabler header styling (form-check-inline m-0). The master is
+            // wired functional in JS — a deviation from Botble, where both
+            // the master and the .checker binding are inert legacy.
             // (data-name="foo" ships verbatim in Botble's markup.)
-            ->assertSee('<label class="form-check ms-auto">', false)
+            ->assertSee('<label class="ms-auto form-check form-check-inline m-0">', false)
             ->assertSee('id="expandCollapseAllTree" class="label label-default allTree form-check-input"', false)
             ->assertSee('<span class="form-check-label">All Permissions</span>', false)
             ->assertSee('All Permissions')
@@ -142,6 +145,11 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js', false)
             ->assertSee('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js', false)
             ->assertSee('\'#auto-checkboxes li\').tree(', false)
+            // The header master is wired up (deviation from inert Botble —
+            // JS behavior itself is browser-only, untestable here); the
+            // dead #mainNode .checker binding is dropped.
+            ->assertSee('\'#expandCollapseAllTree\')', false)
+            ->assertDontSee('\'#mainNode .checker\'', false)
             // The previous in-house tree UI is gone completely.
             ->assertDontSee('data-module-card', false)
             ->assertDontSee('data-module-body', false)
