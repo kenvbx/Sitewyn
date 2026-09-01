@@ -55,7 +55,7 @@ class AdminMenuRegistryTest extends TestCase
             ->assertSee('Dashboard')
             ->assertSee('Access Control')
             ->assertSee('href="http://localhost:8000/admin/users"', false)
-            ->assertDontSee('href="http://localhost:8000/admin/roles"', false)
+            ->assertDontSee('href="http://localhost:8000/admin/system/roles"', false)
             ->assertDontSee('href="http://localhost:8000/admin/permissions"', false);
     }
 

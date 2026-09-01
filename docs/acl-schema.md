@@ -216,17 +216,21 @@ one central seeder.
 
 ## Role Administration
 
-P1-08 adds the first admin CRUD screens for roles:
+P1-08 adds the first admin CRUD screens for roles. The routes now live under
+`/admin/system/roles` (Platform Administration, mirroring the `system/users`
+split); route names are `admin.system.roles.*`.
 
-- `GET /admin/roles` lists roles with permission and user counts.
-- `GET /admin/roles/create` and `POST /admin/roles` create custom roles.
-- `GET /admin/roles/{role}/edit` and `PUT /admin/roles/{role}` update role
-  details and assigned permissions.
-- `DELETE /admin/roles/{role}` deletes custom roles only when no users are
-  assigned.
+- `GET /admin/system/roles` lists roles with permission and user counts.
+- `GET /admin/system/roles/create` and `POST /admin/system/roles` create
+  custom roles.
+- `GET /admin/system/roles/{role}/edit` and `PUT /admin/system/roles/{role}`
+  update role details and assigned permissions.
+- `DELETE /admin/system/roles/{role}` deletes custom roles only when no users
+  are assigned.
 
 All role routes use the admin guard and the `permission` middleware:
-`roles.index`, `roles.create`, `roles.edit`, and `roles.delete`. The controller
+`roles.index`, `roles.create`, `roles.edit`, and `roles.delete`. Permission
+keys are unchanged by the move. The controller
 syncs registered permissions before rendering or saving so permission checkboxes
 stay aligned with module declarations.
 

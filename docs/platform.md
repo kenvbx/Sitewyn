@@ -39,7 +39,7 @@ added for this page.
 |---------------------|---------------------|------------------------|---------|
 | Users               | Team member         | `/admin/system/users`  | users   |
 | Members             | `users.index`       | `/admin/users`         | users   |
-| Roles & Permissions | `roles.index`       | `/admin/roles`         | roles   |
+| Roles & Permissions | `roles.index`       | `/admin/system/roles`  | roles   |
 | Permissions         | `permissions.index` | `/admin/permissions`   | key     |
 | Media               | `media.index`       | `/admin/media`         | media   |
 | Menus               | `menus.manage`      | `/admin/menus`         | menu    |

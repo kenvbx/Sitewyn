@@ -85,7 +85,7 @@ admin.<module>.<action>
 Examples:
 
 - `admin.users.index`
-- `admin.roles.edit`
+- `admin.system.roles.edit`
 - `admin.pages.create`
 - `admin.media.index`
 

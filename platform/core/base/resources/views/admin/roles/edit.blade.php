@@ -6,16 +6,16 @@
 
 @section('breadcrumbs')
   <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-  <li class="breadcrumb-item"><a href="{{ route('admin.roles.index') }}">Roles</a></li>
+  <li class="breadcrumb-item"><a href="{{ route('admin.system.roles.index') }}">Roles</a></li>
   <li class="breadcrumb-item active" aria-current="page">{{ $role->name }}</li>
 @endsection
 
 @section('page-actions')
-  <a href="{{ route('admin.roles.index') }}" class="btn">Back</a>
+  <a href="{{ route('admin.system.roles.index') }}" class="btn">Back</a>
 @endsection
 
 @section('content')
-  <form method="POST" action="{{ route('admin.roles.update', $role) }}" class="needs-validation" data-admin-validate novalidate>
+  <form method="POST" action="{{ route('admin.system.roles.update', $role) }}" class="needs-validation" data-admin-validate novalidate>
     @csrf
     @method('PUT')
     @include('core/base::admin.roles.form')

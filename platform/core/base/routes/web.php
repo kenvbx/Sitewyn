@@ -54,25 +54,6 @@ Route::prefix('admin')
             // precedent).
             Route::get('system', PlatformAdminController::class)->name('system');
 
-            Route::get('roles', [RoleController::class, 'index'])
-                ->middleware('permission:roles.index')
-                ->name('roles.index');
-            Route::get('roles/create', [RoleController::class, 'create'])
-                ->middleware('permission:roles.create')
-                ->name('roles.create');
-            Route::post('roles', [RoleController::class, 'store'])
-                ->middleware('permission:roles.create')
-                ->name('roles.store');
-            Route::get('roles/{role}/edit', [RoleController::class, 'edit'])
-                ->middleware('permission:roles.edit')
-                ->name('roles.edit');
-            Route::put('roles/{role}', [RoleController::class, 'update'])
-                ->middleware('permission:roles.edit')
-                ->name('roles.update');
-            Route::delete('roles/{role}', [RoleController::class, 'destroy'])
-                ->middleware('permission:roles.delete')
-                ->name('roles.destroy');
-
             Route::get('users', [UserController::class, 'index'])
                 ->middleware('permission:users.index')
                 ->name('users.index');
@@ -116,6 +97,29 @@ Route::prefix('admin')
             Route::delete('system/users/{user}', [SystemUserController::class, 'destroy'])
                 ->middleware('permission:system.users.delete')
                 ->name('system.users.destroy');
+
+            // Role management also lives inside Platform Administration
+            // (/admin/system, hub card "Roles & Permissions"), mirroring the
+            // system/users split. Permission keys stay roles.* — renaming
+            // them would orphan role_permission pivots for existing roles.
+            Route::get('system/roles', [RoleController::class, 'index'])
+                ->middleware('permission:roles.index')
+                ->name('system.roles.index');
+            Route::get('system/roles/create', [RoleController::class, 'create'])
+                ->middleware('permission:roles.create')
+                ->name('system.roles.create');
+            Route::post('system/roles', [RoleController::class, 'store'])
+                ->middleware('permission:roles.create')
+                ->name('system.roles.store');
+            Route::get('system/roles/{role}/edit', [RoleController::class, 'edit'])
+                ->middleware('permission:roles.edit')
+                ->name('system.roles.edit');
+            Route::put('system/roles/{role}', [RoleController::class, 'update'])
+                ->middleware('permission:roles.edit')
+                ->name('system.roles.update');
+            Route::delete('system/roles/{role}', [RoleController::class, 'destroy'])
+                ->middleware('permission:roles.delete')
+                ->name('system.roles.destroy');
 
             Route::get('permissions', [PermissionController::class, 'index'])
                 ->middleware('permission:permissions.index')

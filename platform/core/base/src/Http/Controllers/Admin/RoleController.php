@@ -50,7 +50,7 @@ class RoleController extends Controller
         admin_flash()->success(__('Role created successfully.'));
 
         return redirect()
-            ->route('admin.roles.index');
+            ->route('admin.system.roles.index');
     }
 
     public function edit(Role $role): View
@@ -73,7 +73,7 @@ class RoleController extends Controller
         admin_flash()->success(__('Role updated successfully.'));
 
         return redirect()
-            ->route('admin.roles.edit', $role);
+            ->route('admin.system.roles.edit', $role);
     }
 
     public function destroy(Role $role): RedirectResponse
@@ -82,14 +82,14 @@ class RoleController extends Controller
             admin_flash()->error(__('Cannot delete a role that has users.'));
 
             return redirect()
-                ->route('admin.roles.index');
+                ->route('admin.system.roles.index');
         }
 
         if ($role->is_system) {
             admin_flash()->error(__('System roles cannot be deleted.'));
 
             return redirect()
-                ->route('admin.roles.index');
+                ->route('admin.system.roles.index');
         }
 
         $role->permissions()->detach();
@@ -97,7 +97,7 @@ class RoleController extends Controller
         admin_flash()->success(__('Role deleted successfully.'));
 
         return redirect()
-            ->route('admin.roles.index');
+            ->route('admin.system.roles.index');
     }
 
     private function syncRegisteredPermissions(): void

@@ -20,7 +20,7 @@ class AdminRoleCrudTest extends TestCase
         ]);
 
         $this->actingAs($user, 'admin')
-            ->get('/admin/roles')
+            ->get('/admin/system/roles')
             ->assertForbidden();
     }
 
@@ -37,7 +37,7 @@ class AdminRoleCrudTest extends TestCase
         ]);
 
         $this->actingAs($user, 'admin')
-            ->get('/admin/roles')
+            ->get('/admin/system/roles')
             ->assertOk()
             ->assertSee('Roles')
             ->assertSee('Editor');
@@ -51,11 +51,11 @@ class AdminRoleCrudTest extends TestCase
         ]);
 
         $this->actingAs($user, 'admin')
-            ->post('/admin/roles', [
+            ->post('/admin/system/roles', [
                 'name' => 'Content Editor',
                 'permissions' => ['users.index', 'roles.index'],
             ])
-            ->assertRedirect('/admin/roles');
+            ->assertRedirect('/admin/system/roles');
 
         $role = Role::query()->where('slug', 'content-editor')->firstOrFail();
 
@@ -78,13 +78,13 @@ class AdminRoleCrudTest extends TestCase
         ]);
 
         $this->actingAs($user, 'admin')
-            ->put("/admin/roles/{$role->id}", [
+            ->put("/admin/system/roles/{$role->id}", [
                 'name' => 'Role Manager',
                 'slug' => 'role-manager',
                 'description' => 'Manages admin roles.',
                 'permissions' => ['roles.create', 'roles.edit'],
             ])
-            ->assertRedirect("/admin/roles/{$role->id}/edit");
+            ->assertRedirect("/admin/system/roles/{$role->id}/edit");
 
         $role->refresh();
 
@@ -106,8 +106,8 @@ class AdminRoleCrudTest extends TestCase
         $assignedUser->roles()->attach($role);
 
         $this->actingAs($user, 'admin')
-            ->delete("/admin/roles/{$role->id}")
-            ->assertRedirect('/admin/roles')
+            ->delete("/admin/system/roles/{$role->id}")
+            ->assertRedirect('/admin/system/roles')
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('roles', [
@@ -129,8 +129,8 @@ class AdminRoleCrudTest extends TestCase
         $role->permissions()->attach($permission);
 
         $this->actingAs($user, 'admin')
-            ->delete("/admin/roles/{$role->id}")
-            ->assertRedirect('/admin/roles')
+            ->delete("/admin/system/roles/{$role->id}")
+            ->assertRedirect('/admin/system/roles')
             ->assertSessionHas('status');
 
         $this->assertDatabaseMissing('roles', [

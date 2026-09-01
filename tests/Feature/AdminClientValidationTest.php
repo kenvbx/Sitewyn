@@ -40,7 +40,7 @@ class AdminClientValidationTest extends TestCase
         ]);
 
         $this->actingAs($admin, 'admin')
-            ->get('/admin/roles/create')
+            ->get('/admin/system/roles/create')
             ->assertOk()
             ->assertSee('class="needs-validation"', false)
             ->assertSee('data-admin-validate', false)
@@ -79,12 +79,12 @@ class AdminClientValidationTest extends TestCase
         ]);
 
         $this->actingAs($admin, 'admin')
-            ->from('/admin/roles/create')
-            ->post('/admin/roles', [
+            ->from('/admin/system/roles/create')
+            ->post('/admin/system/roles', [
                 'name' => '',
                 'slug' => 'invalid slug',
             ])
-            ->assertRedirect('/admin/roles/create')
+            ->assertRedirect('/admin/system/roles/create')
             ->assertSessionHasErrors(['name', 'slug']);
     }
 }

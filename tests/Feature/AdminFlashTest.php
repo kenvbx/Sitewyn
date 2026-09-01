@@ -37,7 +37,7 @@ class AdminFlashTest extends TestCase
                     'message' => 'Role updated successfully.',
                 ],
             ])
-            ->get('/admin/roles')
+            ->get('/admin/system/roles')
             ->assertOk()
             ->assertSee('toast-container position-fixed bottom-0 end-0 p-3', false)
             ->assertSee('id="admin-flash-toast"', false)

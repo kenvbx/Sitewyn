@@ -18,7 +18,7 @@ class PlatformAdminController extends Controller
      */
     private const CARDS = [
         ['title' => 'Users', 'description' => 'View and update your system users.', 'icon' => 'users', 'url' => '/admin/system/users', 'team' => true],
-        ['title' => 'Roles & Permissions', 'description' => 'View and update your roles and permissions.', 'icon' => 'roles', 'url' => '/admin/roles', 'permission' => 'roles.index'],
+        ['title' => 'Roles & Permissions', 'description' => 'View and update your roles and permissions.', 'icon' => 'roles', 'url' => '/admin/system/roles', 'permission' => 'roles.index'],
         ['title' => 'Permissions', 'description' => 'Browse every registered permission by module.', 'icon' => 'key', 'url' => '/admin/permissions', 'permission' => 'permissions.index'],
         ['title' => 'Media', 'description' => 'Manage your media library files and folders.', 'icon' => 'media', 'url' => '/admin/media', 'permission' => 'media.index'],
         ['title' => 'Menus', 'description' => 'Build and organize your frontend navigation.', 'icon' => 'menu', 'url' => '/admin/menus', 'permission' => 'menus.manage'],
