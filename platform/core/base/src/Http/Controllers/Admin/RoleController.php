@@ -6,6 +6,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Sitewyn\Core\Base\Http\Requests\Admin\StoreRoleRequest;
@@ -35,10 +36,13 @@ class RoleController extends Controller
     {
         $this->syncRegisteredPermissions();
 
+        $tree = $this->permissionTree();
+
         return view('core/base::admin.roles.create', [
             'role' => new Role,
-            'permissionTree' => $this->permissionTree(),
-            'selectedPermissions' => [],
+            'flags' => $tree['flags'],
+            'children' => $tree['children'],
+            'active' => [],
         ]);
     }
 
@@ -57,10 +61,13 @@ class RoleController extends Controller
     {
         $this->syncRegisteredPermissions();
 
+        $tree = $this->permissionTree();
+
         return view('core/base::admin.roles.edit', [
             'role' => $role,
-            'permissionTree' => $this->permissionTree(),
-            'selectedPermissions' => $role->permissions()->pluck('key')->all(),
+            'flags' => $tree['flags'],
+            'children' => $tree['children'],
+            'active' => $role->permissions()->pluck('key')->all(),
         ]);
     }
 
@@ -146,21 +153,89 @@ class RoleController extends Controller
     }
 
     /**
-     * Permission flags tree for the role form: module → feature group →
-     * permissions, mirroring how the registry declares them.
+     * Permission flags data for the role form, built the same way Botble's
+     * ACL RoleForm builds its tree: every permission key is split on dots
+     * into path segments ("system.users.create" → system → users → create),
+     * each segment becomes a flag with a parent flag, and children are
+     * grouped by that parent with the algorithm Botble uses. Grouping flags
+     * have no permission behind them (their checkboxes submit nothing);
+     * real flags carry the original registry key.
      *
-     * @return Collection<string, Collection<string, Collection<int, Permission>>>
+     * @return array{flags: array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>, children: array<string, list<string>>}
      */
-    private function permissionTree(): Collection
+    private function permissionTree(): array
     {
-        return Permission::query()
-            ->orderBy('module')
-            ->orderBy('group')
-            ->orderBy('key')
-            ->get()
-            ->groupBy(fn (Permission $permission): string => $permission->module)
-            ->map(fn (Collection $modulePermissions): Collection => $modulePermissions->groupBy(
-                fn (Permission $permission): string => $permission->group ?: 'ungrouped',
-            ));
+        $flags = [];
+
+        foreach (Permission::query()->orderBy('key')->get() as $permission) {
+            $segments = explode('.', $permission->key);
+            $path = '';
+            $parent = 'root';
+
+            foreach (array_slice($segments, 0, -1) as $segment) {
+                $path = $path === '' ? $segment : $path.'.'.$segment;
+                $flags[$path] = [
+                    'flag' => $path,
+                    'name' => Str::headline(str_replace('.', ' ', $path)),
+                    'parent_flag' => $parent,
+                    'permission' => null,
+                ];
+                $parent = $path;
+            }
+
+            $flags[$permission->key] = [
+                'flag' => $permission->key,
+                'name' => $permission->name ?: Str::headline(str_replace('.', ' ', end($segments))),
+                'parent_flag' => $parent,
+                'permission' => $permission->key,
+            ];
+        }
+
+        return [
+            'flags' => $flags,
+            'children' => $this->getPermissionTree($flags),
+        ];
+    }
+
+    /**
+     * Cloned from Botble's ACL RoleForm::getPermissionTree().
+     *
+     * @param  array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>  $permissions
+     * @return array<string, list<string>>
+     */
+    private function getPermissionTree(array $permissions): array
+    {
+        $sortedFlag = $permissions;
+        sort($sortedFlag);
+
+        $children['root'] = $this->getChildren('root', $sortedFlag);
+
+        foreach (array_keys($permissions) as $key) {
+            $childrenReturned = $this->getChildren($key, $permissions);
+            if (count($childrenReturned) > 0) {
+                $children[$key] = $childrenReturned;
+            }
+        }
+
+        return $children;
+    }
+
+    /**
+     * Cloned from Botble's ACL RoleForm::getChildren().
+     *
+     * @param  array<string, array{flag: string, name: string, parent_flag: string, permission: string|null}>  $flags
+     * @return list<string>
+     */
+    private function getChildren(string $parentFlag, array $flags): array
+    {
+        $newFlags = [];
+
+        foreach ($flags as $item) {
+            if (Arr::get($item, 'parent_flag', 'root') === $parentFlag) {
+                $newFlags[] = $item['flag'];
+            }
+        }
+
+        return $newFlags;
     }
 }

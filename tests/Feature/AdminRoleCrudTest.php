@@ -108,30 +108,56 @@ class AdminRoleCrudTest extends TestCase
             ->get('/admin/system/roles/create')
             ->assertOk()
             ->assertSee('Permission Flags')
+            // Botble tree markup cloned 1:1 from core/acl::roles.permissions:
+            // ul.list-feature#auto-checkboxes wrapping li#mainNode with the
+            // master "All Permissions" checkbox, then nested li.collapsed
+            // nodes. (data-name="foo" ships verbatim in Botble's markup.)
+            ->assertSee('<ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">', false)
+            ->assertSee('<li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">', false)
+            ->assertSee('id="expandCollapseAllTree"', false)
+            ->assertSee('class="label label-default allTree form-check-input"', false)
             ->assertSee('All Permissions')
-            ->assertSee('Collapse all')
-            ->assertSee('Expand all')
-            ->assertSee('data-role-all-master', false)
-            // One Tabler card per module: collapsible body, 2-column groups.
-            ->assertSee('data-module-card', false)
-            ->assertSee('data-module-body', false)
-            ->assertSee('data-module-master', false)
-            ->assertSee('data-module-collapse', false)
-            ->assertSee('data-group-block', false)
-            ->assertSee('data-group-master', false)
-            ->assertSee('data-perm-item', false)
-            ->assertSee('data-role-permission', false)
-            ->assertSee('permissions</span>', false)
-            // Module badge (green); feature groups use a bold label, no orange badge.
-            ->assertSee('badge bg-green-lt', false)
-            ->assertSee('<span class="fw-bold">Users</span>', false)
-            ->assertDontSee('badge bg-orange-lt', false)
-            ->assertSee('>Core</span>', false)
-            // Permission rows are uniform: key + description live in the title tooltip.
-            ->assertSee('name="permissions[]" value="users.index"', false)
-            ->assertSee('name="permissions[]" value="roles.index"', false)
-            ->assertSee('title="users.index', false)
-            ->assertSee('title="roles.index', false)
+            ->assertSee('li class="collapsed mx-0" style="background-color: inherit" id="node0"', false)
+            ->assertSee('id="checkSelect0"', false)
+            // Badge colors follow Botble's depth ladder: root nodes use
+            // bg-*-lt primary badges, second level yellow, third level cyan.
+            ->assertSee('<span class="badge bg-primary-lt">Users</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">System</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">View users</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">System Users</span>', false)
+            ->assertSee('<span class="badge bg-cyan-lt">View team users</span>', false)
+            // Real permission checkboxes submit the original key via
+            // permissions[]; grouping nodes (Users, System Users) submit
+            // nothing because their dot paths are not permissions.
+            ->assertSee('name="permissions[]" class="form-check-input" value="users.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="roles.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="page.index"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="media.upload"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="system.users.create"', false)
+            ->assertSee('id="checkSelect_sub_11_0" class="form-check-input">', false)
+            // Botble loads jquery-ui + jqueryTree + role.js for this screen;
+            // the Sitewyn push loads the same libraries and init code.
+            ->assertSee('vendor/core-base/libraries/jquery.min.js', false)
+            ->assertSee('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js', false)
+            ->assertSee('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js', false)
+            ->assertSee('\'#auto-checkboxes li\').tree(', false)
+            // The previous in-house tree UI is gone completely.
+            ->assertDontSee('data-module-card', false)
+            ->assertDontSee('data-module-body', false)
+            ->assertDontSee('data-module-master', false)
+            ->assertDontSee('data-module-collapse', false)
+            ->assertDontSee('data-group-block', false)
+            ->assertDontSee('data-group-master', false)
+            ->assertDontSee('data-perm-item', false)
+            ->assertDontSee('data-role-permission', false)
+            ->assertDontSee('data-role-all-master', false)
+            ->assertDontSee('data-role-all-permissions', false)
+            ->assertDontSee('data-role-collapse-all', false)
+            ->assertDontSee('data-role-expand-all', false)
+            ->assertDontSee('bg-green-lt', false)
+            ->assertDontSee('bg-orange-lt', false)
+            ->assertDontSee('Collapse all')
+            ->assertDontSee('Expand all')
             // Botble-style limits with live counters and footer controls.
             ->assertSee('maxlength="120"', false)
             ->assertSee('maxlength="250"', false)
@@ -161,8 +187,9 @@ class AdminRoleCrudTest extends TestCase
             ->get("/admin/system/roles/{$role->id}/edit")
             ->assertOk()
             ->assertSee('Permission Flags')
-            // The assigned permission renders pre-checked inside the tree.
-            ->assertSee('value="users.index" data-role-permission checked', false);
+            // The assigned permission renders pre-checked inside the Botble
+            // tree (name, class, value, checked — Botble attribute order).
+            ->assertSee('name="permissions[]" class="form-check-input" value="users.index" checked', false);
     }
 
     public function test_save_and_close_returns_to_roles_index_after_create(): void

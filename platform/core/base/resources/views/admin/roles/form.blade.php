@@ -1,30 +1,3 @@
-@php
-    // Shared create/edit role form (Botble-style "Permission Flags" tree).
-    // Module badges are cosmetic labels for registry module slugs; the registry
-    // data and permission keys themselves stay untouched.
-    $moduleLabels = [
-        'core/base' => 'Core',
-        'package/page' => 'Pages',
-        'package/blog' => 'Blog',
-        'package/media' => 'Media',
-    ];
-
-    // Display-name fallback for registry entries that only ship a key: map the
-    // trailing action to a human label, otherwise headline the action word.
-    $permissionActionLabels = [
-        'index' => 'View list',
-        'create' => 'Create',
-        'store' => 'Create',
-        'edit' => 'Edit',
-        'update' => 'Update',
-        'delete' => 'Delete',
-        'destroy' => 'Delete',
-        'manage' => 'Manage',
-        'show' => 'View',
-        'upload' => 'Upload',
-    ];
-@endphp
-
 <div class="row row-cards">
   <div class="col-12">
     <x-admin-card title="Role information">
@@ -68,79 +41,120 @@
   </div>
 
   <div class="col-12">
-    <x-admin-card title="Permission Flags" data-role-permissions-tree>
-      <x-slot:actions>
-        <label class="form-check form-check-single mb-0">
-          <input type="checkbox" class="form-check-input" data-role-all-master aria-label="Select all permissions" />
-        </label>
-        <button type="button" class="btn btn-sm" data-role-all-permissions>All Permissions</button>
-        <button type="button" class="btn btn-sm btn-link" data-role-collapse-all>Collapse all</button>
-        <button type="button" class="btn btn-sm btn-link" data-role-expand-all>Expand all</button>
-      </x-slot:actions>
-
-      @error('permissions')
-        <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
-      @enderror
-
-      {{-- Each module renders as one full-width Tabler card: header holds the
-           module master checkbox, green badge, permission count, and the
-           collapse chevron; the body is a 2-column grid of feature groups.
-           Permission rows are single uniform lines — the key and description
-           live in the title tooltip instead of cluttering the row. --}}
+    <x-admin-card title="Permission Flags">
       <div class="card-body">
         @error('permissions')
           <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
         @enderror
 
-        @foreach ($permissionTree as $module => $groups)
-          @php
-              $moduleLabel = $moduleLabels[$module] ?? \Illuminate\Support\Str::headline(\Illuminate\Support\Str::after($module, '/'));
-          @endphp
-          <div class="card mb-3" data-module-card>
-            <div class="card-header d-flex align-items-center gap-2">
-              <label class="form-check form-check-single mb-0">
-                <input type="checkbox" class="form-check-input" data-module-master aria-label="Select all {{ $moduleLabel }} permissions" />
-              </label>
-              <span class="badge bg-green-lt">{{ $moduleLabel }}</span>
-              <span class="text-secondary small">{{ $groups->sum(fn ($groupPermissions) => $groupPermissions->count()) }} permissions</span>
-              <button type="button" class="btn btn-sm btn-ghost-secondary px-1 ms-auto" data-module-collapse aria-label="Toggle {{ $moduleLabel }} permissions">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                  <path d="M6 9l6 6l6 -6" />
-                </svg>
-              </button>
-            </div>
-
-            <div class="card-body" data-module-body>
-              <div class="row g-3">
-                @foreach ($groups as $group => $groupPermissions)
-                  @php
-                      $groupLabel = \Illuminate\Support\Str::headline($group);
-                  @endphp
-                  <div class="col-md-6" data-group-block>
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                      <label class="form-check form-check-single mb-0">
-                        <input type="checkbox" class="form-check-input" data-group-master aria-label="Select all {{ $groupLabel }} permissions" />
-                      </label>
-                      <span class="fw-bold">{{ $groupLabel }}</span>
-                      <span class="text-secondary small">{{ $groupPermissions->count() }}</span>
-                    </div>
-
-                    @foreach ($groupPermissions as $permission)
-                      @php
-                          $action = \Illuminate\Support\Str::afterLast($permission->key, '.');
-                          $permissionName = $permission->name ?: ($permissionActionLabels[$action] ?? \Illuminate\Support\Str::headline($action));
-                      @endphp
-                      <label class="form-check d-flex align-items-center gap-2 mb-1" title="{{ $permission->key }}{{ $permission->description ? ' — ' . $permission->description : '' }}" data-perm-item>
-                        <input type="checkbox" class="form-check-input m-0" name="permissions[]" value="{{ $permission->key }}" data-role-permission @checked(in_array($permission->key, old('permissions', $selectedPermissions), true)) />
-                        <span>{{ $permissionName }}</span>
-                      </label>
-                    @endforeach
-                  </div>
-                @endforeach
-              </div>
-            </div>
-          </div>
-        @endforeach
+        {{-- Permission flags tree cloned 1:1 from Botble's
+             core/acl::roles.permissions view: same structure, classes and
+             ids (list-feature, #auto-checkboxes, #mainNode, li.collapsed,
+             nested badges primary/yellow/cyan/lime/purple). Data-only
+             differences: flags come from the Sitewyn permission registry
+             (keys split on dots into path segments), real node checkboxes
+             submit the original key as permissions[] (Botble submits
+             flags[]), and grouping nodes have no name/value because their
+             dot paths are not submittable permissions. --}}
+        <ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">
+          <li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">
+            {{-- Botble renders its master checkbox through
+                 x-core::form.checkbox with both a label attribute and a badge
+                 label slot; the component only renders the label attribute, so
+                 the output is the plain "All Permissions" text (no badge). --}}
+            <label class="form-check">
+              <input type="checkbox" id="expandCollapseAllTree" class="label label-default allTree form-check-input">
+              <span class="form-check-label">All Permissions</span>
+            </label>
+            <ul class="p-0 list-unstyled">
+              @foreach ($children['root'] as $elementKey => $element)
+                <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $elementKey }}">
+                  <label class="form-check">
+                    @if ($flags[$element]['permission'])
+                      <input type="checkbox" id="checkSelect{{ $elementKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$element]['flag'] }}" @checked(in_array($flags[$element]['flag'], old('permissions', $active), true))>
+                    @else
+                      <input type="checkbox" id="checkSelect{{ $elementKey }}" class="form-check-input">
+                    @endif
+                    <span class="form-check-label">
+                      <span class="badge bg-primary-lt">{{ $flags[$element]['name'] }}</span>
+                    </span>
+                  </label>
+                  @if (isset($children[$element]))
+                    <ul class="list-unstyled">
+                      @foreach ($children[$element] as $subKey => $subElements)
+                        <li class="collapsed mx-0" style="background-color: inherit" id="node_sub_{{ $elementKey }}_{{ $subKey }}">
+                          <label class="form-check">
+                            @if ($flags[$subElements]['permission'])
+                              <input type="checkbox" id="checkSelect_sub_{{ $elementKey }}_{{ $subKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$subElements]['flag'] }}" @checked(in_array($flags[$subElements]['flag'], old('permissions', $active), true))>
+                            @else
+                              <input type="checkbox" id="checkSelect_sub_{{ $elementKey }}_{{ $subKey }}" class="form-check-input">
+                            @endif
+                            <span class="form-check-label">
+                              <span class="badge bg-yellow-lt">{{ $flags[$subElements]['name'] }}</span>
+                            </span>
+                          </label>
+                          @if (isset($children[$subElements]))
+                            <ul class="list-unstyled">
+                              @foreach ($children[$subElements] as $subSubKey => $subSubElements)
+                                <li class="collapsed mx-0" style="background-color: inherit" id="node_sub_sub_{{ $subSubKey }}">
+                                  <label class="form-check">
+                                    @if ($flags[$subSubElements]['permission'])
+                                      <input type="checkbox" id="checkSelect_sub_sub{{ $subSubKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$subSubElements]['flag'] }}" @checked(in_array($flags[$subSubElements]['flag'], old('permissions', $active), true))>
+                                    @else
+                                      <input type="checkbox" id="checkSelect_sub_sub{{ $subSubKey }}" class="form-check-input">
+                                    @endif
+                                    <span class="form-check-label">
+                                      <span class="badge bg-cyan-lt">{{ $flags[$subSubElements]['name'] }}</span>
+                                    </span>
+                                  </label>
+                                  @if (isset($children[$subSubElements]))
+                                    <ul class="list-unstyled">
+                                      @foreach ($children[$subSubElements] as $grandChildrenKey => $grandChildrenElements)
+                                        <li class="collapsed mx-0" style="background-color: inherit" id="node_grand_child{{ $grandChildrenKey }}">
+                                          <label class="form-check">
+                                            @if ($flags[$grandChildrenElements]['permission'])
+                                              <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKey }}" name="permissions[]" class="form-check-input" value="{{ $flags[$grandChildrenElements]['flag'] }}" @checked(in_array($flags[$grandChildrenElements]['flag'], old('permissions', $active), true))>
+                                            @else
+                                              <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKey }}" class="form-check-input">
+                                            @endif
+                                            <span class="form-check-label">
+                                              <span class="badge bg-lime-lt">{{ $flags[$grandChildrenElements]['name'] }}</span>
+                                            </span>
+                                          </label>
+                                          @if (isset($children[$grandChildrenElements]))
+                                            <ul class="list-unstyled">
+                                              @foreach ($children[$grandChildrenElements] as $grandChildrenKeySub => $greatGrandChildrenElements)
+                                                <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $grandChildrenKey }}">
+                                                  <label class="form-check">
+                                                    @if ($flags[$grandChildrenElements]['permission'])
+                                                      <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKeySub }}" name="permissions[]" class="form-check-input" value="{{ $flags[$grandChildrenElements]['flag'] }}" @checked(in_array($flags[$grandChildrenElements]['flag'], old('permissions', $active), true))>
+                                                    @else
+                                                      <input type="checkbox" id="checkSelect_grand_child{{ $grandChildrenKeySub }}" class="form-check-input">
+                                                    @endif
+                                                    <span class="form-check-label">
+                                                      <span class="badge bg-purple-lt">{{ $flags[$grandChildrenElements]['name'] }}</span>
+                                                    </span>
+                                                  </label>
+                                              @endforeach
+                                            </ul>
+                                          @endif
+                                        </li>
+                                      @endforeach
+                                    </ul>
+                                  @endif
+                                </li>
+                              @endforeach
+                            </ul>
+                          @endif
+                        </li>
+                      @endforeach
+                    </ul>
+                  @endif
+                </li>
+              @endforeach
+            </ul>
+          </li>
+        </ul>
       </div>
 
       <x-slot:footer>
@@ -157,6 +171,12 @@
 
 @once
   @push('scripts')
+    {{-- Botble's RoleForm loads jquery-ui + jqueryTree styles and scripts
+         for this screen; the local copies live under
+         public/vendor/core-base/libraries (same files Botble publishes). --}}
+    <link href="{{ asset('vendor/core-base/libraries/jquery-ui/jquery-ui.min.css') }}" rel="stylesheet" />
+    <link href="{{ asset('vendor/core-base/libraries/jquery-tree/jquery.tree.min.css') }}" rel="stylesheet" />
+
     <script>
       ;(function () {
         // Character counters for Name/Description: show "N/limit" next to the
@@ -190,136 +210,6 @@
           update()
         })
 
-        // Permission flags tree: master checkboxes with indeterminate state,
-        // "All Permissions" shortcut, module collapse, Collapse/Expand all.
-        // Scopes: a module is [data-module-card], a feature group is the
-        // [data-group-block] inside it, permission rows keep [data-role-permission].
-        var root = document.querySelector('[data-role-permissions-tree]')
-
-        if (! root) return
-
-        function permissionBoxes(scope) {
-          return Array.prototype.slice.call(scope.querySelectorAll('[data-role-permission]'))
-        }
-
-        function refreshMaster(master, boxes) {
-          var checked = boxes.filter(function (box) { return box.checked }).length
-
-          master.checked = boxes.length > 0 && checked === boxes.length
-          master.indeterminate = checked > 0 && checked < boxes.length
-        }
-
-        function refreshGroupMaster(group) {
-          var master = group.querySelector('[data-group-master]')
-
-          if (master) refreshMaster(master, permissionBoxes(group))
-        }
-
-        function refreshModuleMaster(module) {
-          var master = module.querySelector('[data-module-master]')
-
-          if (master) refreshMaster(master, permissionBoxes(module))
-          refreshAllMaster()
-        }
-
-        function refreshAllMaster() {
-          var master = root.querySelector('[data-role-all-master]')
-
-          if (master) refreshMaster(master, permissionBoxes(root))
-        }
-
-        function refreshAllMasters() {
-          root.querySelectorAll('[data-group-block]').forEach(refreshGroupMaster)
-          root.querySelectorAll('[data-module-card]').forEach(refreshModuleMaster)
-          refreshAllMaster()
-        }
-
-        function setModuleCollapsed(card, collapsed) {
-          var body = card.querySelector('[data-module-body]')
-          var toggle = card.querySelector('[data-module-collapse]')
-
-          if (body) body.classList.toggle('d-none', collapsed)
-          if (toggle) toggle.classList.toggle('collapsed', collapsed)
-        }
-
-        root.addEventListener('change', function (event) {
-          var target = event.target
-
-          if (target.matches('[data-role-permission]')) {
-            var group = target.closest('[data-group-block]')
-            var module = target.closest('[data-module-card]')
-
-            if (group) refreshGroupMaster(group)
-            if (module) refreshModuleMaster(module)
-            refreshAllMaster()
-          } else if (target.matches('[data-group-master]')) {
-            var group = target.closest('[data-group-block]')
-
-            permissionBoxes(group).forEach(function (box) { box.checked = target.checked })
-            refreshGroupMaster(group)
-            refreshModuleMaster(group.closest('[data-module-card]'))
-          } else if (target.matches('[data-module-master]')) {
-            var module = target.closest('[data-module-card]')
-
-            permissionBoxes(module).forEach(function (box) { box.checked = target.checked })
-            module.querySelectorAll('[data-group-master]').forEach(function (master) {
-              master.checked = target.checked
-              master.indeterminate = false
-            })
-            refreshModuleMaster(module)
-          } else if (target.matches('[data-role-all-master]')) {
-            permissionBoxes(root).forEach(function (box) { box.checked = target.checked })
-            root.querySelectorAll('[data-group-master]').forEach(function (master) {
-              master.checked = target.checked
-              master.indeterminate = false
-            })
-            root.querySelectorAll('[data-module-master]').forEach(function (master) {
-              master.checked = target.checked
-              master.indeterminate = false
-            })
-            refreshAllMaster()
-          }
-        })
-
-        var allButton = root.querySelector('[data-role-all-permissions]')
-
-        if (allButton) {
-          allButton.addEventListener('click', function () {
-            permissionBoxes(root).forEach(function (box) { box.checked = true })
-            refreshAllMasters()
-          })
-        }
-
-        root.querySelectorAll('[data-module-collapse]').forEach(function (toggle) {
-          toggle.addEventListener('click', function () {
-            var card = toggle.closest('[data-module-card]')
-            var body = card ? card.querySelector('[data-module-body]') : null
-
-            if (card && body) {
-              setModuleCollapsed(card, ! body.classList.contains('d-none'))
-            }
-          })
-        })
-
-        var collapseAll = root.querySelector('[data-role-collapse-all]')
-        var expandAll = root.querySelector('[data-role-expand-all]')
-
-        if (collapseAll) {
-          collapseAll.addEventListener('click', function () {
-            root.querySelectorAll('[data-module-card]').forEach(function (card) {
-              setModuleCollapsed(card, true)
-            })
-          })
-        }
-
-        if (expandAll) {
-          expandAll.addEventListener('click', function () {
-            root.querySelectorAll('[data-module-card]').forEach(function (card) {
-              setModuleCollapsed(card, false)
-            })
-          })
-        }
-
         // Footer buttons: "Save and close" flips the hidden input the
         // controller reads to decide between the edit page and the index.
         var saveCloseField = document.querySelector('[data-role-save-close]')
@@ -340,13 +230,58 @@
             })
           }
         }
-
-        refreshAllMasters()
       })()
     </script>
+
+    <script src="{{ asset('vendor/core-base/libraries/jquery.min.js') }}"></script>
+    <script src="{{ asset('vendor/core-base/libraries/jquery-ui/jquery-ui.min.js') }}"></script>
+    <script src="{{ asset('vendor/core-base/libraries/jquery-tree/jquery.tree.min.js') }}"></script>
+    <script>
+      // Behavior cloned 1:1 from Botble core/acl resources/js/role.js (the
+      // .checker binding is legacy there and matches markup that no longer
+      // exists — kept verbatim like Botble ships it).
+      class Role {
+        init() {
+          $('#auto-checkboxes li').tree({
+            onCheck: {
+              node: 'expand',
+            },
+            onUncheck: {
+              node: 'expand',
+            },
+            dnd: false,
+            selectable: false,
+          })
+
+          $('#mainNode .checker').change((event) => {
+            let _self = $(event.currentTarget)
+            let set = _self.attr('data-set')
+            let checked = _self.is(':checked')
+            $(set).each((index, el) => {
+              if (checked) {
+                $(el).attr('checked', true)
+              } else {
+                $(el).attr('checked', false)
+              }
+            })
+          })
+        }
+      }
+
+      $(() => {
+        new Role().init()
+      })
+    </script>
     <style>
-      [data-module-collapse] svg { transition: transform 0.15s ease; }
-      [data-module-collapse].collapsed svg { transform: rotate(-90deg); }
+      /* Botble core/base sass partial _acl.scss rules for the permission
+         flags tree (compiled form of the rules Botble ships in core.css).
+         The --bb-* variables come from Botble's Tabler build; Sitewyn's
+         Tabler does not define them, so the main node's left border simply
+         falls back to no border. */
+      .permissions-tree .daredevel-tree{border:none!important;border-left:var(--bb-border-width) solid var(--bb-border-color)!important;padding-top:5px}
+      .permissions-tree .daredevel-tree>div{padding-left:10px}
+      .permissions-tree .daredevel-tree:not(:has(ul))>.daredevel-tree-anchor{display:none}
+      .permissions-tree .daredevel-tree-anchor{top:.5rem!important}
     </style>
   @endpush
 @endonce

@@ -241,15 +241,36 @@ stay aligned with module declarations.
 
 ### Role form permission flags
 
-The create and edit forms are reworked to mirror the Botble role form. The
-"Permission Flags" card renders the registry as a three-level tree:
-module badges (green, e.g. Core, Pages, Blog, Media) → feature group badges
-(orange, e.g. Users, Roles, Posts) → individual permission checkboxes, laid
-out in a three-column grid. Every module and group has a collapse toggle plus
-a master checkbox with checked/indeterminate/unchecked state; the card header
-adds a select-all checkbox, an "All Permissions" shortcut, and
-Collapse all / Expand all links. Groups render expanded by default. All
-behavior is dependency-free vanilla JavaScript pushed via `@once @push('scripts')`.
+The create and edit forms clone Botble's permission flags tree 1:1 (structure,
+classes, ids, and behavior from `core/acl::roles.permissions` + `jquery-tree`).
+The only differences are the data source and the submitted field name:
+
+- The tree data is built with Botble's own algorithm (`RoleForm::getPermissionTree()`
+  / `getChildren()`): every registry key is split on dots into path segments
+  (`system.users.create` → system → users → create), each segment becomes a
+  flag with a `parent_flag`, and children are grouped by that parent. Root
+  level nodes are sorted (as Botble does); deeper levels keep key order.
+- Grouping nodes (e.g. Users, System, System Users) are not permissions: their
+  checkboxes carry no `name`/`value` and submit nothing. Real permission
+  checkboxes submit the original registry key as `permissions[]` (Botble
+  submits `flags[]`), keeping the server-side `Rule::in` subset validation.
+- Node labels use the registry permission name, or the headline of the dot
+  path for grouping nodes. Badge colors follow Botble's depth ladder
+  (primary → yellow → cyan → lime → purple).
+- Markup is Botble's verbatim: `ul.list-unstyled.list-feature#auto-checkboxes`
+  → `li#mainNode.permissions-tree` with the master `#expandCollapseAllTree`
+  checkbox ("All Permissions") → nested `li.collapsed` nodes with
+  `checkSelect*` checkbox ids and `node*` li ids.
+- Behavior comes from Botble's `jquery-tree` plugin (daredevel) plus its
+  `role.js`: checking a node checks its descendants and expands it, unchecking
+  unchecks its descendants and expands it, and the node anchor toggles
+  collapse/expand. The master "All Permissions" checkbox has no JavaScript
+  binding in Botble (its `.checker`/`data-set` binding targets markup that no
+  longer exists) and is cloned as-is, so it stays inert. The libraries live in
+  `public/vendor/core-base/libraries/` (same files Botble publishes) and are
+  pushed by the form: jQuery 3.7.1, jQuery UI 1.12.1 (widgets, effects,
+  draggable needed by the plugin), `jquery.tree.min.js/.css`, and the
+  `.permissions-tree` rules from Botble's `_acl.scss`.
 
 The footer has Cancel (back to the index), Save (keeps working on the saved
 role — after create it lands on the new role's edit page), and Save and close
@@ -262,6 +283,10 @@ Deviations from the Botble sample, on purpose:
 - The "Is admin" and "Is default" toggles are omitted: Sitewyn has no matching
   role columns, and super admin is a user flag (`users.is_super_admin`).
 - The slug input is kept so admins can still override the auto-generated slug.
+- Botble's tree node checkboxes submit `flags[]`; Sitewyn submits
+  `permissions[]` with the original registry keys to match its backend
+  validation, and grouping nodes submit nothing (in Botble every node,
+  including group nodes, is a real permission).
 
 ## User Administration
 
