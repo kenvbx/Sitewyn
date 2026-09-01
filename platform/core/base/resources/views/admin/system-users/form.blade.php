@@ -193,30 +193,31 @@
         </label>
       @endif
     </x-admin-card>
+    {{-- Single-role UI: this card manages exactly ONE role per team member —
+         the Super Admin privilege is a separate flag on the card above. A
+         member who somehow holds several roles gets them replaced by the one
+         picked here on save (intentional). The select still submits roles[]
+         so the backend array rule, the permission-subset check and the
+         self-edit strip behave exactly as with the old switch list; if
+         multi-role is ever needed, make this select multiple — the backend
+         already accepts role arrays. --}}
     <x-admin-card title="Roles">
       @error('roles')
         <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
       @enderror
-      <div class="divide-y">
-        @forelse ($roles as $role)
-          <label class="row">
-            <span class="col">
-              <span class="form-label mb-0">{{ $role->name }}</span>
-              <span class="form-hint"><code>{{ $role->slug }}</code>{{ $role->description ? ' - ' . $role->description : '' }}</span>
-            </span>
-            <span class="col-auto">
-              <label class="form-check form-check-single form-switch">
-                <input class="form-check-input" type="checkbox" name="roles[]" value="{{ $role->id }}" @checked(in_array($role->id, old('roles', $selectedRoles), false)) />
-              </label>
-            </span>
-          </label>
-        @empty
-          <div class="empty">
-            <p class="empty-title">No roles found</p>
-            <p class="empty-subtitle text-secondary">Create roles before assigning them to admin users.</p>
-          </div>
-        @endforelse
-      </div>
+      @if ($roles->isNotEmpty())
+        <select class="form-select" name="roles[]" id="roles" aria-label="Role">
+          <option value="">No role</option>
+          @foreach ($roles as $role)
+            <option value="{{ $role->id }}" @selected(in_array($role->id, old('roles', $selectedRoles), false))>{{ $role->name }}</option>
+          @endforeach
+        </select>
+      @else
+        <div class="empty">
+          <p class="empty-title">No roles found</p>
+          <p class="empty-subtitle text-secondary">Create roles before assigning them to admin users.</p>
+        </div>
+      @endif
     </x-admin-card>
   </div>
 </div>
@@ -368,6 +369,26 @@
 
           document.addEventListener('sitewyn-admin-theme-changed', function (event) {
             syncThemeRadios(event.detail && event.detail.theme ? event.detail.theme : currentTheme())
+          })
+        }
+
+        // --- Roles select: "No role" submits nothing ---
+        // A native select would POST roles[]='' and trip the backend's
+        // roles.* integer rule ("must be an integer"), so disabling the
+        // control on submit drops the key entirely — the same payload as
+        // unchecking every switch in the old list, which the controller
+        // turns into sync([]) (all roles detached).
+        var rolesSelect = document.getElementById('roles')
+
+        if (rolesSelect && rolesSelect.form) {
+          rolesSelect.form.addEventListener('submit', function () {
+            rolesSelect.disabled = rolesSelect.value === ''
+          })
+
+          // The back/forward cache restores the disabled flag too — clear
+          // it so the select stays editable after navigating back.
+          window.addEventListener('pageshow', function () {
+            rolesSelect.disabled = false
           })
         }
 

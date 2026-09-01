@@ -68,6 +68,15 @@ features are still deliberately missing until the schema grows again:
   profile tab keeps one `name` field instead of Botble's first/last pair.
 - **Phone number** — no column either; add with the same migration as above
   if ever needed.
+- **Single-role select** — the Roles card is a single `<select name="roles[]">`
+  (one role per team member; the Super Admin privilege stays a separate flag
+  on the Account status card). Saving replaces whatever roles the member
+  held with the one picked here — deliberate. "No role" submits no `roles`
+  field at all (the view disables the control on submit, because a native
+  `roles[]=''` would trip the `roles.*` integer rule) and the controller
+  syncs `[]`, detaching every role. Multi-role support later means
+  switching the select to `multiple` — the backend already accepts role
+  arrays.
 
 ## Avatars & the current-password rule
 

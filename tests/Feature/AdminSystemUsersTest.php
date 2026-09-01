@@ -163,6 +163,72 @@ class AdminSystemUsersTest extends TestCase
             ->assertSee('Save user');
     }
 
+    public function test_roles_card_renders_a_single_select_with_the_current_role_preselected(): void
+    {
+        // The switch list became a single select: one role per team member,
+        // still submitted as the same roles[] array the backend rules and
+        // the escalation guards validate.
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $adminRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $editorRole = Role::factory()->create([
+            'name' => 'Editor',
+            'slug' => 'editor',
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Selected Member',
+            'email' => 'selected-member@example.com',
+        ]);
+        $member->roles()->attach($adminRole);
+
+        $this->actingAs($admin, 'admin')
+            ->get("/admin/system/users/{$member->id}/edit")
+            ->assertOk()
+            ->assertSee('<select class="form-select" name="roles[]" id="roles" aria-label="Role">', false)
+            ->assertSee('<option value="">No role</option>', false)
+            ->assertSee('<option value="'.$adminRole->id.'" selected>Admin</option>', false)
+            // Unselected options keep the space before the (empty) @selected
+            // directive, so assert presence and absence separately.
+            ->assertSee('<option value="'.$editorRole->id.'"', false)
+            ->assertDontSee('<option value="'.$editorRole->id.'" selected', false);
+    }
+
+    public function test_saving_a_team_user_without_roles_clears_their_roles(): void
+    {
+        // "No role" in the select submits no roles field at all (the view
+        // disables the control on submit — a native roles[]='' would trip
+        // the roles.* integer rule). That payload must detach every role,
+        // the same as unchecking all the old switches did.
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $adminRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Roleless Member',
+            'email' => 'roleless-member@example.com',
+        ]);
+        $member->roles()->attach($adminRole);
+
+        $this->actingAs($admin, 'admin')
+            ->put("/admin/system/users/{$member->id}", [
+                'name' => 'Roleless Member',
+                'email' => 'roleless-member@example.com',
+            ])
+            ->assertRedirect("/admin/system/users/{$member->id}/edit")
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame([], $member->refresh()->roles()->pluck('roles.id')->all());
+    }
+
     public function test_edit_team_user_page_renders_the_avatar_tab(): void
     {
         $admin = User::factory()->create([
