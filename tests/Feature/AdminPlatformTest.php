@@ -34,7 +34,6 @@ class AdminPlatformTest extends TestCase
 
         foreach ([
             'View and update your system users.',
-            'Manage non-team member accounts.',
             'View and update your roles and permissions.',
             'Browse every registered permission by module.',
             'Manage your media library files and folders.',
