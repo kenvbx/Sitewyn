@@ -220,6 +220,11 @@ P1-08 adds the first admin CRUD screens for roles. The routes now live under
 `/admin/system/roles` (Platform Administration, mirroring the `system/users`
 split); route names are `admin.system.roles.*`.
 
+There is **no Roles sidebar item**: the Access Control group in the sidebar
+lists only Users and Permissions. Role management is reached through the
+"Roles & Permissions" card on the Platform Administration hub
+(`GET /admin/system`, see `docs/platform.md`).
+
 - `GET /admin/system/roles` lists roles with permission and user counts.
 - `GET /admin/system/roles/create` and `POST /admin/system/roles` create
   custom roles.

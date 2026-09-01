@@ -28,6 +28,11 @@ order 99 — last entry, after Settings 90) is registered in
 `BaseServiceProvider::registerCoreAdminMenu()` with **no permission key**, so
 the hub entry is visible to every admin just like the Dashboard entry.
 
+The sidebar has no **Roles** item: the Access Control group lists only
+**Users** and **Permissions**. Roles are managed through the "Roles &
+Permissions" hub card above, which links to `/admin/system/roles` — the
+routes stay registered even though the sidebar item is gone.
+
 ## Cards
 
 Card metadata is a static array in `PlatformAdminController`; the view only

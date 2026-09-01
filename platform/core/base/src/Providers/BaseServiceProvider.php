@@ -295,7 +295,7 @@ class BaseServiceProvider extends ServiceProvider
                 'id' => 'access-control',
                 'title' => 'Access Control',
                 'icon' => 'users',
-                'active' => ['admin.users.*', 'admin.system.roles.*', 'admin.permissions.*'],
+                'active' => ['admin.users.*', 'admin.permissions.*'],
                 'order' => 20,
                 'children' => [
                     [
@@ -305,14 +305,6 @@ class BaseServiceProvider extends ServiceProvider
                         'permission' => 'users.index',
                         'active' => ['admin.users.*'],
                         'order' => 10,
-                    ],
-                    [
-                        'id' => 'roles',
-                        'title' => 'Roles',
-                        'route' => 'admin.system.roles.index',
-                        'permission' => 'roles.index',
-                        'active' => ['admin.system.roles.*'],
-                        'order' => 20,
                     ],
                     [
                         'id' => 'permissions',

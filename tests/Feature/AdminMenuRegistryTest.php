@@ -32,7 +32,7 @@ class AdminMenuRegistryTest extends TestCase
         $this->assertTrue($registry->has('backups'));
         $this->assertTrue($registry->has('settings'));
         $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'menus', 'widgets', 'media', 'plugins', 'audit-logs', 'backups', 'settings', 'system'], $registry->all()->pluck('id')->all());
-        $this->assertSame(['users', 'roles', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
+        $this->assertSame(['users', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
     }
 
     public function test_sidebar_hides_menu_items_without_permission(): void
@@ -56,7 +56,8 @@ class AdminMenuRegistryTest extends TestCase
             ->assertSee('Access Control')
             ->assertSee('href="http://localhost:8000/admin/users"', false)
             ->assertDontSee('href="http://localhost:8000/admin/system/roles"', false)
-            ->assertDontSee('href="http://localhost:8000/admin/permissions"', false);
+            ->assertDontSee('href="http://localhost:8000/admin/permissions"', false)
+            ->assertDontSee('Roles');
     }
 
     public function test_empty_menu_groups_are_hidden(): void
