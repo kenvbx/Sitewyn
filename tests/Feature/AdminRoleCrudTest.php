@@ -109,14 +109,15 @@ class AdminRoleCrudTest extends TestCase
             ->assertOk()
             ->assertSee('Permission Flags')
             // Botble tree markup cloned 1:1 from core/acl::roles.permissions:
-            // ul.list-feature#auto-checkboxes wrapping li#mainNode with the
-            // master "All Permissions" checkbox, then nested li.collapsed
-            // nodes. (data-name="foo" ships verbatim in Botble's markup.)
-            ->assertSee('<ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">', false)
-            ->assertSee('<li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">', false)
-            ->assertSee('id="expandCollapseAllTree"', false)
-            ->assertSee('class="label label-default allTree form-check-input"', false)
+            // ul.list-feature#auto-checkboxes holding nested li.collapsed
+            // nodes; the master "All Permissions" checkbox sits in the card
+            // header (moved there per the project owner's instruction).
+            // (data-name="foo" ships verbatim in Botble's markup.)
+            ->assertSee('<label class="form-check ms-auto">', false)
+            ->assertSee('id="expandCollapseAllTree" class="label label-default allTree form-check-input"', false)
+            ->assertSee('<span class="form-check-label">All Permissions</span>', false)
             ->assertSee('All Permissions')
+            ->assertSee('<ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">', false)
             ->assertSee('li class="collapsed mx-0" style="background-color: inherit" id="node0"', false)
             ->assertSee('id="checkSelect0"', false)
             // Badge colors follow Botble's depth ladder: root nodes use

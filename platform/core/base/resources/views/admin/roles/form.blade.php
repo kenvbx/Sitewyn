@@ -1,6 +1,6 @@
 <div class="row row-cards">
   <div class="col-12">
-    <x-admin-card title="Role information">
+    <x-admin-card >
       <x-admin-form-group
         name="name"
         label="Name"
@@ -41,7 +41,16 @@
   </div>
 
   <div class="col-12">
-    <x-admin-card title="Permission Flags">
+    <x-admin-card>
+      <x-slot:header>
+        <div class="d-flex align-items-center w-100">
+          <h3 class="card-title mb-0">Permission Flags</h3>
+          <label class="form-check ms-auto">
+            <input type="checkbox" id="expandCollapseAllTree" class="label label-default allTree form-check-input">
+            <span class="form-check-label">All Permissions</span>
+          </label>
+        </div>
+      </x-slot:header>
       <div class="card-body">
         @error('permissions')
           <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
@@ -56,17 +65,18 @@
              submit the original key as permissions[] (Botble submits
              flags[]), and grouping nodes have no name/value because their
              dot paths are not submittable permissions. --}}
+        {{-- Permission flags tree cloned 1:1 from Botble's
+             core/acl::roles.permissions view: same structure, classes and
+             ids (list-feature, #auto-checkboxes, li.collapsed, nested badges
+             primary/yellow/cyan/lime/purple). The master checkbox
+             (#expandCollapseAllTree) now sits in the card header per the
+             project owner's instruction. Data-only differences: flags come
+             from the Sitewyn permission registry (keys split on dots into
+             path segments), real node checkboxes submit the original key as
+             permissions[] (the reference submits flags[]), and grouping
+             nodes have no name/value because their dot paths are not
+             submittable permissions. --}}
         <ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">
-          <li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">
-            {{-- Botble renders its master checkbox through
-                 x-core::form.checkbox with both a label attribute and a badge
-                 label slot; the component only renders the label attribute, so
-                 the output is the plain "All Permissions" text (no badge). --}}
-            <label class="form-check">
-              <input type="checkbox" id="expandCollapseAllTree" class="label label-default allTree form-check-input">
-              <span class="form-check-label">All Permissions</span>
-            </label>
-            <ul class="p-0 list-unstyled">
               @foreach ($children['root'] as $elementKey => $element)
                 <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $elementKey }}">
                   <label class="form-check">
@@ -152,8 +162,6 @@
                   @endif
                 </li>
               @endforeach
-            </ul>
-          </li>
         </ul>
       </div>
 
