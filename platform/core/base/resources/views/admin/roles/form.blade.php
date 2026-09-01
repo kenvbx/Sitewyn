@@ -8,6 +8,21 @@
         'package/blog' => 'Blog',
         'package/media' => 'Media',
     ];
+
+    // Display-name fallback for registry entries that only ship a key: map the
+    // trailing action to a human label, otherwise headline the action word.
+    $permissionActionLabels = [
+        'index' => 'View list',
+        'create' => 'Create',
+        'store' => 'Create',
+        'edit' => 'Edit',
+        'update' => 'Update',
+        'delete' => 'Delete',
+        'destroy' => 'Delete',
+        'manage' => 'Manage',
+        'show' => 'View',
+        'upload' => 'Upload',
+    ];
 @endphp
 
 <div class="row row-cards">
@@ -67,58 +82,66 @@
         <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
       @enderror
 
-      @foreach ($permissionTree as $module => $groups)
-        @php
-            $moduleLabel = $moduleLabels[$module] ?? \Illuminate\Support\Str::headline(\Illuminate\Support\Str::after($module, '/'));
-        @endphp
-        <section class="mb-4" data-role-module>
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <button type="button" class="btn btn-sm btn-ghost-secondary px-1" data-role-tree-toggle aria-label="Toggle {{ $moduleLabel }} permissions">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M6 9l6 6l6 -6" />
-              </svg>
-            </button>
-            <label class="form-check form-check-single mb-0">
-              <input type="checkbox" class="form-check-input" data-role-module-master aria-label="Select all {{ $moduleLabel }} permissions" />
-            </label>
-            <span class="badge bg-green-lt">{{ $moduleLabel }}</span>
-            <span class="text-secondary small">{{ $groups->sum(fn ($groupPermissions) => $groupPermissions->count()) }} permissions</span>
-          </div>
+      {{-- Each module renders as one full-width Tabler card: header holds the
+           module master checkbox, green badge, permission count, and the
+           collapse chevron; the body is a 2-column grid of feature groups.
+           Permission rows are single uniform lines — the key and description
+           live in the title tooltip instead of cluttering the row. --}}
+      <div class="card-body">
+        @error('permissions')
+          <x-admin-alert type="danger">{{ $message }}</x-admin-alert>
+        @enderror
 
-          <div class="row" data-role-tree-body>
-            @foreach ($groups as $group => $groupPermissions)
-              @php
-                  $groupLabel = \Illuminate\Support\Str::headline($group);
-              @endphp
-              <div class="col-lg-4 py-2" data-role-group>
-                <div class="d-flex align-items-center gap-1 mb-1">
-                  <button type="button" class="btn btn-sm btn-ghost-secondary px-1" data-role-tree-toggle aria-label="Toggle {{ $groupLabel }} permissions">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <path d="M6 9l6 6l6 -6" />
-                    </svg>
-                  </button>
-                  <label class="form-check form-check-single mb-0">
-                    <input type="checkbox" class="form-check-input" data-role-group-master aria-label="Select all {{ $groupLabel }} permissions" />
-                  </label>
-                  <span class="badge bg-orange-lt">{{ $groupLabel }}</span>
-                </div>
+        @foreach ($permissionTree as $module => $groups)
+          @php
+              $moduleLabel = $moduleLabels[$module] ?? \Illuminate\Support\Str::headline(\Illuminate\Support\Str::after($module, '/'));
+          @endphp
+          <div class="card mb-3" data-module-card>
+            <div class="card-header d-flex align-items-center gap-2">
+              <label class="form-check form-check-single mb-0">
+                <input type="checkbox" class="form-check-input" data-module-master aria-label="Select all {{ $moduleLabel }} permissions" />
+              </label>
+              <span class="badge bg-green-lt">{{ $moduleLabel }}</span>
+              <span class="text-secondary small">{{ $groups->sum(fn ($groupPermissions) => $groupPermissions->count()) }} permissions</span>
+              <button type="button" class="btn btn-sm btn-ghost-secondary px-1 ms-auto" data-module-collapse aria-label="Toggle {{ $moduleLabel }} permissions">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                  <path d="M6 9l6 6l6 -6" />
+                </svg>
+              </button>
+            </div>
 
-                <div class="ps-4" data-role-tree-body>
-                  @foreach ($groupPermissions as $permission)
-                    <label class="form-check">
-                      <input class="form-check-input" type="checkbox" name="permissions[]" value="{{ $permission->key }}" data-role-permission @checked(in_array($permission->key, old('permissions', $selectedPermissions), true)) />
-                      <span class="form-check-label">
-                        {{ $permission->name }}
-                        <span class="form-hint d-block"><code>{{ $permission->key }}</code>{{ $permission->description ? ' - ' . $permission->description : '' }}</span>
-                      </span>
-                    </label>
-                  @endforeach
-                </div>
+            <div class="card-body" data-module-body>
+              <div class="row g-3">
+                @foreach ($groups as $group => $groupPermissions)
+                  @php
+                      $groupLabel = \Illuminate\Support\Str::headline($group);
+                  @endphp
+                  <div class="col-md-6" data-group-block>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <label class="form-check form-check-single mb-0">
+                        <input type="checkbox" class="form-check-input" data-group-master aria-label="Select all {{ $groupLabel }} permissions" />
+                      </label>
+                      <span class="fw-bold">{{ $groupLabel }}</span>
+                      <span class="text-secondary small">{{ $groupPermissions->count() }}</span>
+                    </div>
+
+                    @foreach ($groupPermissions as $permission)
+                      @php
+                          $action = \Illuminate\Support\Str::afterLast($permission->key, '.');
+                          $permissionName = $permission->name ?: ($permissionActionLabels[$action] ?? \Illuminate\Support\Str::headline($action));
+                      @endphp
+                      <label class="form-check d-flex align-items-center gap-2 mb-1" title="{{ $permission->key }}{{ $permission->description ? ' — ' . $permission->description : '' }}" data-perm-item>
+                        <input type="checkbox" class="form-check-input m-0" name="permissions[]" value="{{ $permission->key }}" data-role-permission @checked(in_array($permission->key, old('permissions', $selectedPermissions), true)) />
+                        <span>{{ $permissionName }}</span>
+                      </label>
+                    @endforeach
+                  </div>
+                @endforeach
               </div>
-            @endforeach
+            </div>
           </div>
-        </section>
-      @endforeach
+        @endforeach
+      </div>
 
       <x-slot:footer>
         <input type="hidden" name="save_and_close" value="0" data-role-save-close />
@@ -168,7 +191,9 @@
         })
 
         // Permission flags tree: master checkboxes with indeterminate state,
-        // "All Permissions" shortcut, collapse toggles, Collapse/Expand all.
+        // "All Permissions" shortcut, module collapse, Collapse/Expand all.
+        // Scopes: a module is [data-module-card], a feature group is the
+        // [data-group-block] inside it, permission rows keep [data-role-permission].
         var root = document.querySelector('[data-role-permissions-tree]')
 
         if (! root) return
@@ -185,13 +210,13 @@
         }
 
         function refreshGroupMaster(group) {
-          var master = group.querySelector('[data-role-group-master]')
+          var master = group.querySelector('[data-group-master]')
 
           if (master) refreshMaster(master, permissionBoxes(group))
         }
 
         function refreshModuleMaster(module) {
-          var master = module.querySelector('[data-role-module-master]')
+          var master = module.querySelector('[data-module-master]')
 
           if (master) refreshMaster(master, permissionBoxes(module))
           refreshAllMaster()
@@ -204,14 +229,14 @@
         }
 
         function refreshAllMasters() {
-          root.querySelectorAll('[data-role-group]').forEach(refreshGroupMaster)
-          root.querySelectorAll('[data-role-module]').forEach(refreshModuleMaster)
+          root.querySelectorAll('[data-group-block]').forEach(refreshGroupMaster)
+          root.querySelectorAll('[data-module-card]').forEach(refreshModuleMaster)
           refreshAllMaster()
         }
 
-        function setCollapsed(wrapper, collapsed) {
-          var body = wrapper.querySelector('[data-role-tree-body]')
-          var toggle = wrapper.querySelector('[data-role-tree-toggle]')
+        function setModuleCollapsed(card, collapsed) {
+          var body = card.querySelector('[data-module-body]')
+          var toggle = card.querySelector('[data-module-collapse]')
 
           if (body) body.classList.toggle('d-none', collapsed)
           if (toggle) toggle.classList.toggle('collapsed', collapsed)
@@ -221,34 +246,34 @@
           var target = event.target
 
           if (target.matches('[data-role-permission]')) {
-            var group = target.closest('[data-role-group]')
-            var module = target.closest('[data-role-module]')
+            var group = target.closest('[data-group-block]')
+            var module = target.closest('[data-module-card]')
 
             if (group) refreshGroupMaster(group)
             if (module) refreshModuleMaster(module)
             refreshAllMaster()
-          } else if (target.matches('[data-role-group-master]')) {
-            var group = target.closest('[data-role-group]')
+          } else if (target.matches('[data-group-master]')) {
+            var group = target.closest('[data-group-block]')
 
             permissionBoxes(group).forEach(function (box) { box.checked = target.checked })
             refreshGroupMaster(group)
-            refreshModuleMaster(group.closest('[data-role-module]'))
-          } else if (target.matches('[data-role-module-master]')) {
-            var module = target.closest('[data-role-module]')
+            refreshModuleMaster(group.closest('[data-module-card]'))
+          } else if (target.matches('[data-module-master]')) {
+            var module = target.closest('[data-module-card]')
 
             permissionBoxes(module).forEach(function (box) { box.checked = target.checked })
-            module.querySelectorAll('[data-role-group-master]').forEach(function (master) {
+            module.querySelectorAll('[data-group-master]').forEach(function (master) {
               master.checked = target.checked
               master.indeterminate = false
             })
             refreshModuleMaster(module)
           } else if (target.matches('[data-role-all-master]')) {
             permissionBoxes(root).forEach(function (box) { box.checked = target.checked })
-            root.querySelectorAll('[data-role-group-master]').forEach(function (master) {
+            root.querySelectorAll('[data-group-master]').forEach(function (master) {
               master.checked = target.checked
               master.indeterminate = false
             })
-            root.querySelectorAll('[data-role-module-master]').forEach(function (master) {
+            root.querySelectorAll('[data-module-master]').forEach(function (master) {
               master.checked = target.checked
               master.indeterminate = false
             })
@@ -265,13 +290,13 @@
           })
         }
 
-        root.querySelectorAll('[data-role-tree-toggle]').forEach(function (toggle) {
+        root.querySelectorAll('[data-module-collapse]').forEach(function (toggle) {
           toggle.addEventListener('click', function () {
-            var wrapper = toggle.closest('[data-role-group], [data-role-module]')
-            var body = wrapper ? wrapper.querySelector('[data-role-tree-body]') : null
+            var card = toggle.closest('[data-module-card]')
+            var body = card ? card.querySelector('[data-module-body]') : null
 
-            if (wrapper && body) {
-              setCollapsed(wrapper, ! body.classList.contains('d-none'))
+            if (card && body) {
+              setModuleCollapsed(card, ! body.classList.contains('d-none'))
             }
           })
         })
@@ -281,16 +306,16 @@
 
         if (collapseAll) {
           collapseAll.addEventListener('click', function () {
-            root.querySelectorAll('[data-role-group]').forEach(function (group) {
-              setCollapsed(group, true)
+            root.querySelectorAll('[data-module-card]').forEach(function (card) {
+              setModuleCollapsed(card, true)
             })
           })
         }
 
         if (expandAll) {
           expandAll.addEventListener('click', function () {
-            root.querySelectorAll('[data-role-group]').forEach(function (group) {
-              setCollapsed(group, false)
+            root.querySelectorAll('[data-module-card]').forEach(function (card) {
+              setModuleCollapsed(card, false)
             })
           })
         }
@@ -320,8 +345,8 @@
       })()
     </script>
     <style>
-      [data-role-tree-toggle] svg { transition: transform 0.15s ease; }
-      [data-role-tree-toggle].collapsed svg { transform: rotate(-90deg); }
+      [data-module-collapse] svg { transition: transform 0.15s ease; }
+      [data-module-collapse].collapsed svg { transform: rotate(-90deg); }
     </style>
   @endpush
 @endonce

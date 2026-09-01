@@ -112,17 +112,26 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('Collapse all')
             ->assertSee('Expand all')
             ->assertSee('data-role-all-master', false)
-            ->assertSee('data-role-module-master', false)
-            ->assertSee('data-role-group-master', false)
+            // One Tabler card per module: collapsible body, 2-column groups.
+            ->assertSee('data-module-card', false)
+            ->assertSee('data-module-body', false)
+            ->assertSee('data-module-master', false)
+            ->assertSee('data-module-collapse', false)
+            ->assertSee('data-group-block', false)
+            ->assertSee('data-group-master', false)
+            ->assertSee('data-perm-item', false)
             ->assertSee('data-role-permission', false)
-            ->assertSee('data-role-tree-toggle', false)
-            // Module badge (green) and feature group badge (orange).
+            ->assertSee('permissions</span>', false)
+            // Module badge (green); feature groups use a bold label, no orange badge.
             ->assertSee('badge bg-green-lt', false)
-            ->assertSee('badge bg-orange-lt', false)
+            ->assertSee('<span class="fw-bold">Users</span>', false)
+            ->assertDontSee('badge bg-orange-lt', false)
             ->assertSee('>Core</span>', false)
-            ->assertSee('>Users</span>', false)
+            // Permission rows are uniform: key + description live in the title tooltip.
             ->assertSee('name="permissions[]" value="users.index"', false)
             ->assertSee('name="permissions[]" value="roles.index"', false)
+            ->assertSee('title="users.index', false)
+            ->assertSee('title="roles.index', false)
             // Botble-style limits with live counters and footer controls.
             ->assertSee('maxlength="120"', false)
             ->assertSee('maxlength="250"', false)
