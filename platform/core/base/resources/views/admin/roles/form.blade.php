@@ -44,20 +44,24 @@
     <x-admin-card>
       <x-slot:header>
         <div class="d-flex align-items-center w-100">
-          <h4 class="card-title">Permission Flags</h4>
-          {{-- The master stays on the left next to the title; the
-               collapse/expand links take over the ms-auto slot on the
-               right and are wired by wireCollapseAll() in the @once
-               script below. --}}
-          <label class="ms-3 form-check">
-            <input type="checkbox" id="expandCollapseAllTree" class="form-check-input label label-default allTree">
-            <span class="form-check-label">All Permissions</span>
-          </label>
-          <div class="ms-auto d-flex align-items-center gap-2">
-            <a href="#" id="collapseAllTree" class="link-secondary text-decoration-none">Collapse all</a>
-            <span class="text-secondary">|</span>
-            <a href="#" id="expandAllTree" class="link-secondary text-decoration-none">Expand all</a>
-          </div>
+            <h4 class="card-title">Permission Flags</h4>
+            {{-- The master stays on the left next to the title; the
+                collapse/expand links take over the ms-auto slot on the
+                right and are wired by wireCollapseAll() in the @once
+                script below. --}}
+            <div class="card-actions">
+                <div class="d-flex">
+                    <label class="form-check mb-0">
+                        <input type="checkbox" id="expandCollapseAllTree" class="form-check-input label label-default allTree">
+                        <span class="form-check-label">All Permissions</span>
+                      </label>
+                      <div class="d-flex align-items-center gap-2 ms-3">
+                        <a href="#" id="collapseAllTree" class="link-secondary text-decoration-none">Collapse all</a>
+                        <span class="text-secondary">|</span>
+                        <a href="#" id="expandAllTree" class="link-secondary text-decoration-none">Expand all</a>
+                      </div>
+                </div>
+            </div>
         </div>
       </x-slot:header>
       <div class="card-body">
@@ -85,7 +89,7 @@
             <ul class="parent_tree m-0 p-0 list-unstyled" id="node{{ $moduleIndex }}">
               <li class="permissions-item list-unstyled">
                 <div class="permissions-header">
-                  <label class="form-check">
+                  <label class="form-check mb-0">
                     <input type="checkbox" id="checkbox_one_{{ $moduleIndex }}" class="form-check-input check-success">
                     <span class="form-check-label">
                       <span class="badge bg-success-lt">{{ $module['name'] }}</span>
@@ -95,13 +99,14 @@
                 <ul class="row permissions-body has-children">
                   @foreach ($module['features'] as $featureIndex => $feature)
                     @if (isset($feature['leaf']))
-                      {{-- Single-action feature (Settings/Plugins/Backups/
-                           Menus/Widgets): the feature li holds the leaf
-                           directly — no hitarea, no badge. --}}
+                      {{-- Single-action feature (Permissions/Audit/Settings/
+                           Plugins/Backups/Menus/Widgets): the feature li
+                           holds its badge + checkbox directly — no hitarea,
+                           no children. Badge text = feature name. --}}
                       <li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_{{ $moduleIndex }}_{{ $featureIndex }}">
                         <label class="form-check">
                           <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" name="permissions[]" class="form-check-input" value="{{ $feature['leaf']['key'] }}" @checked(in_array($feature['leaf']['key'], old('permissions', $active), true))>
-                          <span class="form-check-label">{{ $feature['leaf']['text'] }}</span>
+                          <span class="form-check-label"><span class="badge bg-primary-lt">{{ $feature['name'] }}</span></span>
                         </label>
                       </li>
                     @elseif (empty($feature['children']))

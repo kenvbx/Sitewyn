@@ -122,7 +122,8 @@ class AdminRoleCrudTest extends TestCase
             // — a deviation from Botble, where the tree master is a flat
             // check-all rendered inside the card body.
             // (data-name="foo" ships verbatim in Botble's markup.)
-            ->assertSee('<label class="ms-3 form-check">', false)
+            ->assertSee('<div class="card-actions">', false)
+            ->assertSee('<label class="form-check mb-0">', false)
             ->assertSee('id="expandCollapseAllTree" class="form-check-input label label-default allTree"', false)
             ->assertSee('<span class="form-check-label">All Permissions</span>', false)
             // The ms-auto slot moved from the master label to the
@@ -160,6 +161,8 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('<span class="badge bg-primary-lt">Users</span>', false)
             ->assertSee('<span class="badge bg-primary-lt">System</span>', false)
             ->assertSee('<span class="badge bg-primary-lt">Roles</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Menus</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Widgets</span>', false)
             ->assertSee('<span class="badge bg-primary-lt">Posts</span>', false)
             ->assertSee('<span class="badge bg-yellow-lt">System Users</span>', false)
             // Real permission checkboxes submit the original key via
@@ -179,12 +182,12 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('name="permissions[]" class="form-check-input" value="system.users.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="system.users.create"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="menus.manage"', false)
-            ->assertSee('<span class="form-check-label">Create</span>', false)
-            ->assertSee('<span class="form-check-label">Edit</span>', false)
-            ->assertSee('<span class="form-check-label">Delete</span>', false)
-            ->assertSee('<span class="form-check-label">View list</span>', false)
-            ->assertSee('<span class="form-check-label">Manage</span>', false)
-            ->assertSee('<span class="form-check-label">Upload</span>', false)
+            ->assertSeeText('Create')
+            ->assertSeeText('Edit')
+            ->assertSeeText('Delete')
+            ->assertSeeText('View list')
+            ->assertSeeText('Upload')
+            ->assertDontSee('<span class="form-check-label">Manage</span>', false)
             // Botble core.css .permissions-tree rules verbatim (the
             // .daredevel-tree rules of the old markup are gone with it),
             // plus the --bb-bg-* values the dark-mode rules consume
@@ -243,6 +246,35 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('data-role-counter="250"', false)
             ->assertSee('name="save_and_close"', false)
             ->assertSee('Save and close');
+    }
+
+    public function test_role_create_form_ignores_stale_database_permissions(): void
+    {
+        $user = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+
+        Permission::query()->create([
+            'name' => 'Manage',
+            'key' => 'users.manage',
+            'module' => 'core/base',
+            'group' => 'users',
+        ]);
+        Permission::query()->create([
+            'name' => 'Manage',
+            'key' => 'roles.manage',
+            'module' => 'core/base',
+            'group' => 'roles',
+        ]);
+
+        $this->actingAs($user, 'admin')
+            ->get('/admin/system/roles/create')
+            ->assertOk()
+            ->assertSee('value="users.index"', false)
+            ->assertSee('value="roles.index"', false)
+            ->assertDontSee('value="users.manage"', false)
+            ->assertDontSee('value="roles.manage"', false);
     }
 
     public function test_role_edit_form_renders_selected_permission_checked(): void

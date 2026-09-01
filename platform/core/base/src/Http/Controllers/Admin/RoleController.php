@@ -174,8 +174,8 @@ class RoleController extends Controller
      *       ]],
      *       // single-permission feature rendered flat with its badge:
      *       ['name' => 'Permissions', 'permission' => 'permissions.index', 'children' => []],
-     *       // single-action feature rendered as a bare leaf:
-     *       ['leaf' => ['key' => 'menus.manage', 'text' => 'Manage']],
+     *       // single-action feature rendered flat with the registry name:
+     *       ['leaf' => ['key' => 'menus.manage', 'text' => 'Manage menus']],
      *     ],
      *   ], ...
      *
@@ -213,7 +213,9 @@ class RoleController extends Controller
         ];
 
         // Leaf verbs per action segment, mirroring the short verbs Botble's
-        // tree leaves use (Create/Edit/Delete/...).
+        // tree leaves use for grouped resources (Create/Edit/Delete/...).
+        // Single-action permissions keep their registry name so Core does not
+        // show orphan-looking leaves such as "Manage" without the resource.
         $leafTexts = [
             'index' => 'View list',
             'create' => 'Create',
@@ -223,12 +225,13 @@ class RoleController extends Controller
             'manage' => 'Manage',
         ];
 
-        // Registry permissions bucketed module → group → key (keys arrive
-        // sorted from the query, and groups inherit that order).
+        // Registry permissions bucketed module → group → key. The form must
+        // render from the live registry, not from the database, because local
+        // databases can still contain stale permission rows from older builds.
         $grouped = [];
 
-        foreach (Permission::query()->orderBy('key')->get() as $permission) {
-            $grouped[$permission->module][$permission->group ?? ''][$permission->key] = $permission;
+        foreach ($this->permissions->all()->sortBy('key') as $permission) {
+            $grouped[$permission['module']][$permission['group'] ?? ''][$permission['key']] = $permission;
         }
 
         $tree = [];
@@ -254,9 +257,11 @@ class RoleController extends Controller
 
             foreach ($orderedGroups as $group) {
                 $groupPermissions = collect($groups[$group])->values();
-                $leafOf = fn ($permission): array => [
-                    'key' => $permission->key,
-                    'text' => $leafTexts[Str::afterLast($permission->key, '.')] ?? $permission->name,
+                $leafOf = fn (array $permission, bool $useRegistryName = false): array => [
+                    'key' => $permission['key'],
+                    'text' => $useRegistryName
+                        ? $permission['name']
+                        : ($leafTexts[Str::afterLast($permission['key'], '.')] ?? $permission['name']),
                 ];
 
                 if ($group === 'system users') {
@@ -271,7 +276,9 @@ class RoleController extends Controller
                             [
                                 'name' => 'System Users',
                                 'permission' => null,
-                                'children' => $groupPermissions->map($leafOf)->all(),
+                                'children' => $groupPermissions
+                                    ->map(fn (array $permission): array => $leafOf($permission))
+                                    ->all(),
                             ],
                         ],
                     ];
@@ -280,24 +287,29 @@ class RoleController extends Controller
                 }
 
                 if ($groupPermissions->count() === 1) {
-                    // Single-action features (Settings/Plugins/Backups/
-                    // Menus/Widgets) render flat: the feature li holds the
-                    // leaf directly, without hitarea or badge.
-                    $features[] = ['leaf' => $leafOf($groupPermissions->first())];
+                    // Single-action features (Permissions/Audit/Settings/
+                    // Plugins/Backups/Menus/Widgets) render flat: the feature
+                    // li holds its badge + checkbox directly, without hitarea
+                    // or children — same as Botble's single-flag features
+                    // (e.g. Reports under Blog).
+                    $features[] = [
+                        'name' => $featureNames[$group] ?? Str::headline($group),
+                        'leaf' => $leafOf($groupPermissions->first(), true),
+                    ];
 
                     continue;
                 }
 
                 $indexPermission = $groupPermissions->first(
-                    fn ($permission): bool => Str::afterLast($permission->key, '.') === 'index'
+                    fn (array $permission): bool => Str::afterLast($permission['key'], '.') === 'index'
                 );
 
                 $features[] = [
                     'name' => $featureNames[$group] ?? Str::headline($group),
-                    'permission' => $indexPermission?->key,
+                    'permission' => $indexPermission['key'] ?? null,
                     'children' => $groupPermissions
-                        ->reject(fn ($permission): bool => $indexPermission !== null && $permission->key === $indexPermission->key)
-                        ->map($leafOf)
+                        ->reject(fn (array $permission): bool => $indexPermission !== null && $permission['key'] === $indexPermission['key'])
+                        ->map(fn (array $permission): array => $leafOf($permission))
                         ->all(),
                 ];
             }
