@@ -248,8 +248,8 @@
       // Tree behavior cloned 1:1 from Botble core/acl resources/js/role.js.
       // DEVIATION per the project owner's instruction: Botble ships the
       // header "All Permissions" master (#expandCollapseAllTree) inert
-      // (nothing binds it) and carries a dead #mainNode .checker binding
-      // whose markup no longer exists — Sitewyn drops the dead binding and
+      // (nothing binds it) and carries a dead legacy master binding whose
+      // markup no longer exists — Sitewyn drops that dead binding and
       // wires the master up (see wireAllPermissionsMaster below).
       class Role {
         init() {
