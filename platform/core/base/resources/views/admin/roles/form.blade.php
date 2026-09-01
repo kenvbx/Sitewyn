@@ -45,10 +45,19 @@
       <x-slot:header>
         <div class="d-flex align-items-center w-100">
           <h4 class="card-title">Permission Flags</h4>
-          <label class="ms-auto form-check">
+          {{-- The master stays on the left next to the title; the
+               collapse/expand links take over the ms-auto slot on the
+               right and are wired by wireCollapseAll() in the @once
+               script below. --}}
+          <label class="ms-3 form-check">
             <input type="checkbox" id="expandCollapseAllTree" class="form-check-input label label-default allTree">
             <span class="form-check-label">All Permissions</span>
           </label>
+          <div class="ms-auto d-flex align-items-center gap-2">
+            <a href="#" id="collapseAllTree" class="link-secondary text-decoration-none">Collapse all</a>
+            <span class="text-secondary">|</span>
+            <a href="#" id="expandAllTree" class="link-secondary text-decoration-none">Expand all</a>
+          </div>
         </div>
       </x-slot:header>
       <div class="card-body">
@@ -279,6 +288,7 @@
           })
 
           this.wireAllPermissionsMaster()
+          this.wireCollapseAll()
         }
 
         // DEVIATION from Botble (its #allTreeChecked master is a flat
@@ -311,6 +321,28 @@
           tree.on('change', 'input[type="checkbox"]', syncMaster)
 
           syncMaster()
+        }
+
+        // Collapse/expand every branch of the tree at once. Verified in
+        // jquery.treeview.min.js: the plugin's toggler swaps the
+        // expandable/collapsable hitarea classes both ways (swapClass)
+        // and height-toggles the direct ul, so one click per hitarea is
+        // enough for the nested tree — all hitareas are captured before
+        // any click fires, and a simulated hitarea click never re-enters
+        // another hitarea's handler (a hitarea is a sibling of the
+        // nested lists, never an ancestor of another hitarea).
+        wireCollapseAll() {
+          const tree = $('#checkboxes-permisstions')
+
+          $('#collapseAllTree').on('click', (event) => {
+            event.preventDefault()
+            tree.find('.collapsable-hitarea').trigger('click')
+          })
+
+          $('#expandAllTree').on('click', (event) => {
+            event.preventDefault()
+            tree.find('.expandable-hitarea').trigger('click')
+          })
         }
       }
 

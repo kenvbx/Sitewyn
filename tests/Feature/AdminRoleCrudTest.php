@@ -122,9 +122,17 @@ class AdminRoleCrudTest extends TestCase
             // — a deviation from Botble, where the tree master is a flat
             // check-all rendered inside the card body.
             // (data-name="foo" ships verbatim in Botble's markup.)
-            ->assertSee('<label class="ms-auto form-check">', false)
+            ->assertSee('<label class="ms-3 form-check">', false)
             ->assertSee('id="expandCollapseAllTree" class="form-check-input label label-default allTree"', false)
             ->assertSee('<span class="form-check-label">All Permissions</span>', false)
+            // The ms-auto slot moved from the master label to the
+            // collapse/expand links on the right of the header (master
+            // stays left next to the title); the links are wired by
+            // wireCollapseAll() — JS behavior itself is browser-only,
+            // untestable here.
+            ->assertSee('<a href="#" id="collapseAllTree" class="link-secondary text-decoration-none">Collapse all</a>', false)
+            ->assertSee('<span class="text-secondary">|</span>', false)
+            ->assertSee('<a href="#" id="expandAllTree" class="link-secondary text-decoration-none">Expand all</a>', false)
             ->assertSee('<div class="permissions-tree" id="checkboxes-permisstions" data-name="foo">', false)
             ->assertSee('<ul class="parent_tree m-0 p-0 list-unstyled" id="node0">', false)
             ->assertSee('<li class="permissions-item list-unstyled">', false)
@@ -228,8 +236,6 @@ class AdminRoleCrudTest extends TestCase
             ->assertDontSee('data-role-expand-all', false)
             ->assertDontSee('bg-green-lt', false)
             ->assertDontSee('bg-orange-lt', false)
-            ->assertDontSee('Collapse all')
-            ->assertDontSee('Expand all')
             // Botble-style limits with live counters and footer controls.
             ->assertSee('maxlength="120"', false)
             ->assertSee('maxlength="250"', false)
