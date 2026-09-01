@@ -44,9 +44,9 @@
     <x-admin-card>
       <x-slot:header>
         <div class="d-flex align-items-center w-100">
-          <h3 class="card-title mb-0">Permission Flags</h3>
-          <label class="ms-auto form-check form-check-inline m-0">
-            <input type="checkbox" id="expandCollapseAllTree" class="label label-default allTree form-check-input">
+          <h4 class="card-title">Permission Flags</h4>
+          <label class="ms-auto form-check">
+            <input type="checkbox" id="expandCollapseAllTree" class="form-check-input label label-default allTree">
             <span class="form-check-label">All Permissions</span>
           </label>
         </div>
@@ -59,24 +59,20 @@
         {{-- Permission flags tree cloned 1:1 from Botble's
              core/acl::roles.permissions view: same structure, classes and
              ids (list-feature, #auto-checkboxes, #mainNode, li.collapsed,
-             nested badges primary/yellow/cyan/lime/purple). Data-only
-             differences: flags come from the Sitewyn permission registry
-             (keys split on dots into path segments), real node checkboxes
-             submit the original key as permissions[] (Botble submits
-             flags[]), and grouping nodes have no name/value because their
-             dot paths are not submittable permissions. --}}
-        {{-- Permission flags tree cloned 1:1 from Botble's
-             core/acl::roles.permissions view: same structure, classes and
-             ids (list-feature, #auto-checkboxes, li.collapsed, nested badges
-             primary/yellow/cyan/lime/purple). The master checkbox
-             (#expandCollapseAllTree) now sits in the card header per the
-             project owner's instruction. Data-only differences: flags come
-             from the Sitewyn permission registry (keys split on dots into
-             path segments), real node checkboxes submit the original key as
-             permissions[] (the reference submits flags[]), and grouping
-             nodes have no name/value because their dot paths are not
-             submittable permissions. --}}
+             nested badges primary/yellow/cyan/lime/purple). The master
+             checkbox (#expandCollapseAllTree) sits in the card header per
+             the project owner's instruction, so the li#mainNode wrapper
+             keeps only its nested ul — the .permissions-tree class on it
+             is what Botble's daredevel-tree CSS rules (core.css) target.
+             Data-only differences: flags come from the Sitewyn permission
+             registry (keys split on dots into path segments), real node
+             checkboxes submit the original key as permissions[] (the
+             reference submits flags[]), and grouping nodes have no
+             name/value because their dot paths are not submittable
+             permissions. --}}
         <ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">
+          <li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">
+            <ul class="p-0 list-unstyled">
               @foreach ($children['root'] as $elementKey => $element)
                 <li class="collapsed mx-0" style="background-color: inherit" id="node{{ $elementKey }}">
                   <label class="form-check">
@@ -162,6 +158,8 @@
                   @endif
                 </li>
               @endforeach
+            </ul>
+          </li>
         </ul>
       </div>
 
@@ -306,11 +304,13 @@
       })
     </script>
     <style>
-      /* Botble core/base sass partial _acl.scss rules for the permission
-         flags tree (compiled form of the rules Botble ships in core.css).
-         The --bb-* variables come from Botble's Tabler build; Sitewyn's
-         Tabler does not define them, so the main node's left border simply
-         falls back to no border. */
+      /* Botble's permission flags tree rules (platform/core/base/public/css/
+         core.css), copied verbatim. The --bb-border-* custom properties the
+         rules consume are defined in Botble's core.css ":root,[data-bs-theme=
+         light]" and "[data-bs-theme=dark]" blocks — Sitewyn's Tabler build
+         does not ship them, so those values are copied verbatim too. */
+      :root, [data-bs-theme=light] { --bb-border-width: 1px; --bb-border-color: #dce1e7; }
+      [data-bs-theme=dark], body[data-bs-theme=dark] [data-bs-theme=light] { --bb-border-color: #25384f; }
       .permissions-tree .daredevel-tree{border:none!important;border-left:var(--bb-border-width) solid var(--bb-border-color)!important;padding-top:5px}
       .permissions-tree .daredevel-tree>div{padding-left:10px}
       .permissions-tree .daredevel-tree:not(:has(ul))>.daredevel-tree-anchor{display:none}

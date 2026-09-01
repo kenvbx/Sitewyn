@@ -109,16 +109,29 @@ class AdminRoleCrudTest extends TestCase
             ->assertOk()
             ->assertSee('Permission Flags')
             // Botble tree markup cloned 1:1 from core/acl::roles.permissions:
-            // ul.list-feature#auto-checkboxes holding nested li.collapsed
-            // nodes; the master "All Permissions" checkbox sits in the card
-            // header (moved there per the project owner's instruction) with
-            // Tabler header styling (form-check-inline m-0). The master is
+            // ul.list-feature#auto-checkboxes holding li#mainNode (the
+            // .permissions-tree hook Botble's daredevel-tree CSS rules
+            // target) and nested li.collapsed nodes. The master
+            // "All Permissions" checkbox sits in the card header (moved
+            // there per the project owner's instruction) but keeps Botble's
+            // x-core::form.checkbox markup — label.form-check with the
+            // ms-auto utility as the only placement glue. The master is
             // wired functional in JS — a deviation from Botble, where both
             // the master and the .checker binding are inert legacy.
             // (data-name="foo" ships verbatim in Botble's markup.)
-            ->assertSee('<label class="ms-auto form-check form-check-inline m-0">', false)
-            ->assertSee('id="expandCollapseAllTree" class="label label-default allTree form-check-input"', false)
+            ->assertSee('<label class="ms-auto form-check">', false)
+            ->assertSee('id="expandCollapseAllTree" class="form-check-input label label-default allTree"', false)
             ->assertSee('<span class="form-check-label">All Permissions</span>', false)
+            ->assertSee('<li id="mainNode" class="permissions-tree border-0" style="background-color: inherit;">', false)
+            ->assertSee('<ul class="p-0 list-unstyled">', false)
+            // Botble core.css daredevel-tree rules verbatim, plus the
+            // --bb-border-* values they consume (copied from Botble's
+            // core.css :root / dark blocks).
+            ->assertSee('--bb-border-width: 1px', false)
+            ->assertSee('--bb-border-color: #dce1e7', false)
+            ->assertSee('--bb-border-color: #25384f', false)
+            ->assertSee('.permissions-tree .daredevel-tree{border:none!important;border-left:var(--bb-border-width) solid var(--bb-border-color)!important;padding-top:5px}', false)
+            ->assertSee('.permissions-tree .daredevel-tree:not(:has(ul))>.daredevel-tree-anchor{display:none}', false)
             ->assertSee('All Permissions')
             ->assertSee('<ul class="list-unstyled list-feature" id="auto-checkboxes" data-name="foo">', false)
             ->assertSee('li class="collapsed mx-0" style="background-color: inherit" id="node0"', false)
