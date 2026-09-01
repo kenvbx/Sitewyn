@@ -94,7 +94,7 @@
               <div class="input-group input-group-flat">
                 <input type="password" id="current_password" name="current_password" value="{{ old('current_password') }}" autocomplete="current-password" class="form-control {{ $errorBag->has('current_password') ? 'is-invalid' : '' }}" />
                 <span class="input-group-text">
-                  <button type="button" class="btn btn-link link-secondary p-0" data-admin-password-toggle aria-label="Show password">
+                  <button type="button" class="link-secondary input-group-link border-0 bg-transparent p-0" title="Show password" aria-label="Show password" aria-pressed="false" data-admin-password-toggle="current_password">
                     <span class="admin-password-icon-show">@include('core/base::admin.partials.icon', ['name' => 'eye'])</span>
                     <span class="admin-password-icon-hide d-none">@include('core/base::admin.partials.icon', ['name' => 'eye-off'])</span>
                   </button>
@@ -112,7 +112,7 @@
                 <div class="input-group input-group-flat">
                   <input type="password" id="password" name="password" value="{{ old('password') }}" autocomplete="new-password" @required($isCreate) minlength="8" class="form-control {{ $errorBag->has('password') ? 'is-invalid' : '' }}" />
                   <span class="input-group-text">
-                    <button type="button" class="btn btn-link link-secondary p-0" data-admin-password-toggle aria-label="Show password">
+                    <button type="button" class="link-secondary input-group-link border-0 bg-transparent p-0" title="Show password" aria-label="Show password" aria-pressed="false" data-admin-password-toggle="password">
                       <span class="admin-password-icon-show">@include('core/base::admin.partials.icon', ['name' => 'eye'])</span>
                       <span class="admin-password-icon-hide d-none">@include('core/base::admin.partials.icon', ['name' => 'eye-off'])</span>
                     </button>
@@ -130,7 +130,7 @@
                 <div class="input-group input-group-flat">
                   <input type="password" id="password_confirmation" name="password_confirmation" value="{{ old('password_confirmation') }}" autocomplete="new-password" @required($isCreate) minlength="8" class="form-control {{ $errorBag->has('password_confirmation') ? 'is-invalid' : '' }}" data-admin-confirm="password" data-admin-confirm-message="Password confirmation does not match." />
                   <span class="input-group-text">
-                    <button type="button" class="btn btn-link link-secondary p-0" data-admin-password-toggle aria-label="Show password">
+                    <button type="button" class="link-secondary input-group-link border-0 bg-transparent p-0" title="Show password" aria-label="Show password" aria-pressed="false" data-admin-password-toggle="password_confirmation">
                       <span class="admin-password-icon-show">@include('core/base::admin.partials.icon', ['name' => 'eye'])</span>
                       <span class="admin-password-icon-hide d-none">@include('core/base::admin.partials.icon', ['name' => 'eye-off'])</span>
                     </button>
@@ -229,16 +229,20 @@
   @push('scripts')
     <script>
       ;(function () {
-        // --- Password show/hide (eye toggle) ---
+        // --- Password show/hide (eye toggle, Tabler sign-in pattern) ---
         document.querySelectorAll('[data-admin-password-toggle]').forEach(function (button) {
           button.addEventListener('click', function () {
-            var input = button.closest('.input-group').querySelector('input')
+            var targetId = button.getAttribute('data-admin-password-toggle')
+            var input = targetId ? document.getElementById(targetId) : button.closest('.input-group').querySelector('input')
             var show = input.type === 'password'
+            var label = show ? 'Hide password' : 'Show password'
 
             input.type = show ? 'text' : 'password'
             button.querySelector('.admin-password-icon-show').classList.toggle('d-none', ! show)
             button.querySelector('.admin-password-icon-hide').classList.toggle('d-none', show)
-            button.setAttribute('aria-label', show ? 'Hide password' : 'Show password')
+            button.setAttribute('aria-pressed', show ? 'true' : 'false')
+            button.setAttribute('title', label)
+            button.setAttribute('aria-label', label)
           })
         })
 

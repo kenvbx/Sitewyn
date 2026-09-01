@@ -1,9 +1,5 @@
 @extends('core/base::admin.layouts.master')
 
-@section('title', 'Edit team user - ' . config('app.name', 'Sitewyn') . ' Admin')
-@section('pretitle', 'System')
-@section('page-title', 'Edit team user')
-
 @section('breadcrumbs')
   <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
   <li class="breadcrumb-item"><a href="{{ route('admin.system') }}">Platform Administration</a></li>
