@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Sitewyn\Core\Base\Models\Language;
+use Sitewyn\Core\Base\Support\DateFilter;
 use Sitewyn\Core\Base\Support\SlugService;
 use Sitewyn\Core\Base\Support\Translations;
 use Sitewyn\Packages\Blog\Http\Requests\Admin\StorePostRequest;
@@ -196,20 +197,12 @@ class PostController extends Controller
     }
 
     /**
-     * Accept only strict Y-m-d dates so arbitrary query input never reaches
-     * whereDate(); anything else counts as no filter.
+     * Query input can be an array (e.g. ?created_from[]=1); narrow it to a
+     * string before the shared parser so bad input counts as no filter.
      */
     private function dateFilter(mixed $date): ?string
     {
-        $date = is_string($date) ? trim($date) : '';
-
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return null;
-        }
-
-        [$year, $month, $day] = array_map('intval', explode('-', $date));
-
-        return checkdate($month, $day, $year) ? $date : null;
+        return DateFilter::parse(is_string($date) ? $date : null);
     }
 
     /**
