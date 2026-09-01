@@ -59,26 +59,22 @@
           <div class="tab-pane" id="system-user-tab-avatar" role="tabpanel" aria-labelledby="system-user-tab-avatar" tabindex="0">
             {{-- The file input is part of the main form: the upload only
                  happens on submit, the buttons below just drive the local
-                 preview and the remove flag. --}}
-            <div class="mb-3 d-flex align-items-center gap-3">
-              <div class="system-user-avatar" data-avatar-preview>
-                @if ($user->avatar)
-                  <img src="{{ $user->avatar_url }}" alt="{{ __('Avatar of :name', ['name' => $user->name]) }}" data-avatar-image />
-                  <span class="d-none" data-avatar-fallback>{{ $avatarInitials }}</span>
-                @else
-                  <span data-avatar-fallback>{{ $avatarInitials }}</span>
-                @endif
-              </div>
-              <div>
-                <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-outline-secondary" data-avatar-choose>
-                    @include('core/base::admin.partials.icon', ['name' => 'media'])
-                    Choose image
-                  </button>
-                  <button type="button" class="btn btn-outline-danger" data-avatar-remove @unless($user->avatar) hidden @endunless>Remove</button>
+                 preview and the remove flag. Avatar block follows the Tabler
+                 settings.html pattern: the initials sit inside the span and a
+                 stored avatar is a background-image on the same span. --}}
+            <div class="mb-3">
+              <div class="row align-items-center">
+                <div class="col-auto">
+                  <span class="avatar avatar-xl" data-avatar-preview @if ($user->avatar) style="background-image: url('{{ $user->avatar_url }}')" @endif>{{ $avatarInitials }}</span>
                 </div>
-                <div class="form-hint">JPG, PNG or WebP, up to 2&nbsp;MB.</div>
+                <div class="col-auto">
+                  <button type="button" class="btn" data-avatar-choose>Change avatar</button>
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-ghost-danger" data-avatar-remove @unless($user->avatar) hidden @endunless>Delete avatar</button>
+                </div>
               </div>
+              <div class="form-hint">JPG, PNG or WebP, up to 2&nbsp;MB.</div>
             </div>
             <input type="file" id="avatar" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="d-none" data-avatar-input aria-label="Choose avatar image" />
             <input type="hidden" name="avatar_remove" value="0" data-avatar-remove-flag />
@@ -251,21 +247,23 @@
 
         if (avatarInput) {
           var preview = document.querySelector('[data-avatar-preview]')
-          var image = preview ? preview.querySelector('[data-avatar-image]') : null
-          var fallback = preview ? preview.querySelector('[data-avatar-fallback]') : null
           var chooseButton = document.querySelector('[data-avatar-choose]')
           var removeButton = document.querySelector('[data-avatar-remove]')
           var removeFlag = document.querySelector('[data-avatar-remove-flag]')
           var previewUrl = null
 
+          // Tabler settings.html pattern: the initials live as the span's
+          // text and a picture is a background-image on the same span, so
+          // the fallback is just clearing the background again.
+          var initials = preview ? preview.textContent.trim() : ''
+
           var showImagePreview = function (src) {
-            if (! preview || ! image || ! fallback) {
+            if (! preview) {
               return
             }
 
-            image.src = src
-            image.classList.remove('d-none')
-            fallback.classList.add('d-none')
+            preview.style.backgroundImage = 'url("' + src + '")'
+            preview.textContent = ''
 
             if (removeButton) {
               removeButton.hidden = false
@@ -273,7 +271,7 @@
           }
 
           var showFallbackPreview = function () {
-            if (! preview || ! image || ! fallback) {
+            if (! preview) {
               return
             }
 
@@ -282,13 +280,19 @@
               previewUrl = null
             }
 
-            image.classList.add('d-none')
-            image.removeAttribute('src')
-            fallback.classList.remove('d-none')
+            preview.style.backgroundImage = ''
+            preview.textContent = initials
 
             if (removeButton) {
               removeButton.hidden = true
             }
+          }
+
+          // Server-rendered state: a background image means preview mode —
+          // the initials would draw over it, so drop the text. Otherwise the
+          // markup already shows the fallback.
+          if (preview && preview.style.backgroundImage) {
+            preview.textContent = ''
           }
 
           if (chooseButton) {
@@ -399,31 +403,3 @@
     </script>
   @endpush
 @endonce
-
-@push('styles')
-  <style>
-    /* --- Team user form: avatar preview (page-scoped, no global impact) --- */
-    .system-user-avatar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex: 0 0 auto;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      overflow: hidden;
-      background-color: rgba(37, 99, 235, .08);
-      color: #2563eb;
-      font-size: 2.25rem;
-      font-weight: 600;
-      letter-spacing: .02em;
-      user-select: none;
-    }
-
-    .system-user-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  </style>
-@endpush

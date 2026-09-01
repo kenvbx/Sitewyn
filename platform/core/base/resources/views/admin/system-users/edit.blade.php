@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-  <form method="POST" action="{{ route('admin.system.users.update', $user) }}" class="needs-validation" data-admin-validate novalidate>
+  <form method="POST" action="{{ route('admin.system.users.update', $user) }}" enctype="multipart/form-data" class="needs-validation" data-admin-validate novalidate>
     @csrf
     @method('PUT')
     @include('core/base::admin.system-users.form')

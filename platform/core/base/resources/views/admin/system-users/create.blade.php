@@ -16,7 +16,7 @@
 @endsection
 
 @section('content')
-  <form method="POST" action="{{ route('admin.system.users.store') }}" class="needs-validation" data-admin-validate novalidate>
+  <form method="POST" action="{{ route('admin.system.users.store') }}" enctype="multipart/form-data" class="needs-validation" data-admin-validate novalidate>
     @csrf
     @include('core/base::admin.system-users.form')
   </form>
