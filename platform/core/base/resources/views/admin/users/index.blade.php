@@ -96,7 +96,8 @@
       <tr>
         <td class="sort-name">
           <div class="d-flex align-items-center">
-            <span class="avatar avatar-sm me-3">{{ collect(explode(' ', $user->name))->filter()->map(fn (string $part) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($part, 0, 1)))->take(2)->implode('') ?: 'AD' }}</span>
+            {{-- Stored avatar paints the initials circle as a background-image. --}}
+            <span class="avatar avatar-sm me-2" data-user-avatar @if ($user->avatar) style="background-image: url('{{ $user->avatar_url }}')" @endif>@unless ($user->avatar){{ collect(explode(' ', $user->name))->filter()->map(fn (string $part) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($part, 0, 1)))->take(2)->implode('') ?: 'AD' }}@endunless</span>
             <div>
               <div class="fw-medium">{{ $user->name }}</div>
               @if ($user->username)

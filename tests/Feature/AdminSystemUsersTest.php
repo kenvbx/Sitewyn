@@ -472,6 +472,56 @@ class AdminSystemUsersTest extends TestCase
         $this->assertNull($member->refresh()->avatar);
     }
 
+    public function test_team_users_index_shows_the_stored_avatar_in_the_name_column(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $teamRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Pictured Teammate',
+            'email' => 'pictured-teammate@example.com',
+            'avatar' => 'avatars/seeded.png',
+        ]);
+        $member->roles()->attach($teamRole);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/system/users')
+            ->assertOk()
+            // The name column paints the stored avatar onto the Tabler span.
+            ->assertSee('avatar avatar-sm me-2" data-user-avatar', false)
+            ->assertSee('background-image: url(\''.$member->avatar_url.'\')', false)
+            ->assertDontSee('>PT</span>', false);
+    }
+
+    public function test_team_users_index_falls_back_to_initials_without_a_stored_avatar(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $teamRole = Role::factory()->system()->create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Bare Teammate',
+            'email' => 'bare-teammate@example.com',
+        ]);
+        $member->roles()->attach($teamRole);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/system/users')
+            ->assertOk()
+            // Without a stored avatar the Tabler span shows the initials.
+            ->assertSee('avatar avatar-sm me-2" data-user-avatar', false)
+            ->assertSee('>BT</span>', false);
+    }
+
     public function test_self_edit_password_change_requires_the_correct_current_password(): void
     {
         $admin = User::factory()->create([

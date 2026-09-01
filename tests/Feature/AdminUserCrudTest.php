@@ -461,6 +461,46 @@ class AdminUserCrudTest extends TestCase
             ->assertDontSee('<span class="badge bg-blue-lt">', false);
     }
 
+    public function test_users_index_shows_the_stored_avatar_in_the_name_column(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Pictured Member',
+            'email' => 'pictured-member@example.com',
+            'avatar' => 'avatars/seeded.png',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users')
+            ->assertOk()
+            // The name column paints the stored avatar onto the Tabler span.
+            ->assertSee('avatar avatar-sm me-2" data-user-avatar', false)
+            ->assertSee('background-image: url(\''.$member->avatar_url.'\')', false)
+            ->assertDontSee('>PM</span>', false);
+    }
+
+    public function test_users_index_falls_back_to_initials_without_a_stored_avatar(): void
+    {
+        $admin = User::factory()->create([
+            'is_super_admin' => true,
+            'is_active' => true,
+        ]);
+        $member = User::factory()->create([
+            'name' => 'Plain Member',
+            'email' => 'plain-member@example.com',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/users')
+            ->assertOk()
+            // Without a stored avatar the Tabler span shows the initials.
+            ->assertSee('avatar avatar-sm me-2" data-user-avatar', false)
+            ->assertSee('>PM</span>', false);
+    }
+
     private function createUserCreatedOn(string $createdAt, array $attributes = []): User
     {
         $user = User::factory()->create($attributes);
