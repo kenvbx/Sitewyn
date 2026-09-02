@@ -29,9 +29,15 @@ class AdminMenuRegistryTest extends TestCase
         $this->assertTrue($registry->has('media'));
         $this->assertTrue($registry->has('plugins'));
         $this->assertTrue($registry->has('audit-logs'));
-        $this->assertTrue($registry->has('backups'));
+        $this->assertFalse($registry->has('request-logs'));
+        $this->assertFalse($registry->has('backups'));
+        $this->assertFalse($registry->has('cronjob'));
+        $this->assertFalse($registry->has('security'));
+        $this->assertFalse($registry->has('cache'));
+        $this->assertFalse($registry->has('cleanup'));
+        $this->assertFalse($registry->has('system-info'));
         $this->assertTrue($registry->has('settings'));
-        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'menus', 'widgets', 'media', 'plugins', 'audit-logs', 'backups', 'settings', 'system'], $registry->all()->pluck('id')->all());
+        $this->assertSame(['dashboard', 'pages', 'access-control', 'posts', 'categories', 'tags', 'menus', 'widgets', 'media', 'plugins', 'audit-logs', 'settings', 'system'], $registry->all()->pluck('id')->all());
         $this->assertSame(['users', 'permissions'], collect($registry->all()[2]['children'])->pluck('id')->all());
     }
 

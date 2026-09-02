@@ -3,6 +3,7 @@
 namespace Sitewyn\Core\Base\Support;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -121,6 +122,92 @@ class BackupService
     /**
      * @throws InvalidArgumentException
      */
+    public function databaseDump(string $name): string
+    {
+        $path = $this->backupPath($name);
+        $zip = new ZipArchive;
+
+        if ($zip->open($path, ZipArchive::CHECKCONS) !== true) {
+            throw new InvalidArgumentException("Cannot open backup archive [{$name}].");
+        }
+
+        try {
+            $json = $zip->getFromName(self::DATABASE_ENTRY);
+        } finally {
+            $zip->close();
+        }
+
+        if ($json === false) {
+            throw new InvalidArgumentException("Backup [{$name}] does not contain a database dump.");
+        }
+
+        return (string) $json;
+    }
+
+    public function databaseDownloadName(string $name): string
+    {
+        return pathinfo($name, PATHINFO_FILENAME).'-database.json';
+    }
+
+    /**
+     * @return array{path: string, name: string}
+     *
+     * @throws InvalidArgumentException
+     * @throws RuntimeException
+     */
+    public function uploadsArchive(string $name): array
+    {
+        $sourcePath = $this->backupPath($name);
+        $fileName = pathinfo($name, PATHINFO_FILENAME).'-uploads.zip';
+        $disk = $this->localDisk();
+        $disk->makeDirectory(self::BACKUP_DIRECTORY.'/exports');
+        $targetPath = $disk->path(self::BACKUP_DIRECTORY.'/exports/'.$fileName);
+
+        $source = new ZipArchive;
+
+        if ($source->open($sourcePath, ZipArchive::CHECKCONS) !== true) {
+            throw new InvalidArgumentException("Cannot open backup archive [{$name}].");
+        }
+
+        $target = new ZipArchive;
+
+        if ($target->open($targetPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            $source->close();
+
+            throw new RuntimeException("Cannot create uploads archive [{$fileName}].");
+        }
+
+        try {
+            for ($index = 0; $index < $source->numFiles; $index++) {
+                $entry = (string) $source->getNameIndex($index);
+
+                if (! str_starts_with($entry, self::FILES_PREFIX)) {
+                    continue;
+                }
+
+                $relative = substr($entry, strlen(self::FILES_PREFIX));
+
+                if ($relative === '' || str_ends_with($relative, '/') || ! $this->isSafeRelativePath($relative)) {
+                    continue;
+                }
+
+                $contents = $source->getFromName($entry);
+
+                if ($contents === false || $target->addFromString($relative, (string) $contents) === false) {
+                    throw new RuntimeException("Cannot add upload file [{$relative}] to the uploads archive.");
+                }
+            }
+        } finally {
+            $target->close();
+            $source->close();
+        }
+
+        return ['path' => $targetPath, 'name' => $fileName];
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
     public function delete(string $name): void
     {
         $this->backupPath($name);
@@ -157,10 +244,18 @@ class BackupService
         $dump = [];
 
         foreach ($this->userTableNames() as $table) {
-            $dump[$table] = DB::table($table)
-                ->get()
-                ->map(fn (mixed $row): array => (array) $row)
-                ->all();
+            try {
+                $dump[$table] = DB::table($table)
+                    ->get()
+                    ->map(fn (mixed $row): array => (array) $row)
+                    ->all();
+            } catch (QueryException $exception) {
+                if ($exception->getCode() !== '42S02') {
+                    throw $exception;
+                }
+
+                logger()->warning("Backup skipped table [{$table}] because it does not exist in the current database.");
+            }
         }
 
         return (string) json_encode(
@@ -395,7 +490,9 @@ class BackupService
     {
         return array_values(array_filter(
             Schema::getTableListing(schemaQualified: false),
-            fn (string $table): bool => ! in_array($table, self::EXCLUDED_TABLES, true),
+            fn (string $table): bool => $this->isValidTableName($table)
+                && ! in_array($table, self::EXCLUDED_TABLES, true)
+                && Schema::hasTable($table),
         ));
     }
 

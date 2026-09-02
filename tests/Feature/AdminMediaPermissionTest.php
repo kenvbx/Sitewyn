@@ -30,8 +30,10 @@ class AdminMediaPermissionTest extends TestCase
 
     public function test_permission_sync_persists_media_permissions(): void
     {
+        $permissionCount = $this->app->make(PermissionRegistry::class)->all()->count();
+
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 39 permissions.')
+            ->expectsOutputToContain("Synced {$permissionCount} permissions.")
             ->assertSuccessful();
 
         foreach (['media.index', 'media.upload', 'media.edit', 'media.delete'] as $key) {

@@ -8,6 +8,7 @@
 
 @section('breadcrumbs')
   <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="{{ route('admin.system') }}">Platform Administration</a></li>
   <li class="breadcrumb-item active" aria-current="page">Backups</li>
 @endsection
 
@@ -26,54 +27,80 @@
     };
   @endphp
 
-  <x-admin-card
-    title="Database and media backups"
-    subtitle="Each backup is a ZIP archive with a JSON dump of every database table and a mirror of the media files. Restoring replaces ALL current data and media."
-  >
-    <div class="mb-3">
-      <form method="POST" action="{{ route('admin.backups.create', [], false) }}" class="d-inline">
+  <div class="alert alert-warning mb-4" role="alert">
+    <div class="d-flex">
+      <div>@include('core/base::admin.partials.icon', ['name' => 'alert-circle'])</div>
+      <div>
+        <div>- This simple backup feature is ideal for website having less than 1GB of data. A quick and easy way to create backups.</div>
+        <div class="mt-3">- For larger websites with over 1GB of images or files, consider using the backup features provided by your hosting or VPS provider.</div>
+        <div class="mt-3">- To back up your database, the PHP function <code>proc_open()</code> or <code>system()</code> must be enabled. Contact your hosting provider to enable these functions if needed.</div>
+        <div class="mt-3">- It is not a full backup, only uploaded files and database are included.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header justify-content-end">
+      <form method="POST" action="{{ route('admin.system.backups.create', [], false) }}" class="d-inline">
         @csrf
-        <button type="submit" class="btn btn-primary" aria-label="Create backup">Create backup</button>
+        <button type="submit" class="btn btn-primary" aria-label="Generate backup">Generate backup</button>
       </form>
     </div>
 
     <div class="table-responsive">
-      <table class="table table-vcenter" id="admin-backups-table">
+      <table class="table table-vcenter card-table" id="admin-backups-table">
         <thead>
           <tr>
             <th>Name</th>
+            <th>Description</th>
             <th>Size</th>
             <th>Created at</th>
-            <th class="w-1"></th>
+            <th class="w-1 text-end">Operations</th>
           </tr>
         </thead>
         <tbody>
           @forelse ($backups as $backup)
             <tr>
               <td class="fw-medium">{{ $backup['name'] }}</td>
+              <td class="text-secondary">Backup current data for demo purposes</td>
               <td class="text-secondary">{{ $humanSize($backup['sizeBytes']) }}</td>
               <td class="text-secondary">{{ $backup['createdAt'] }}</td>
               <td class="d-flex gap-1 justify-content-end">
-                <a href="{{ route('admin.backups.download', $backup['name'], false) }}"
-                   class="btn btn-sm btn-outline-primary"
-                   aria-label="Download {{ $backup['name'] }}">Download</a>
-                <button type="button" class="btn btn-sm btn-outline-warning"
+                <a href="{{ route('admin.system.backups.download-database', $backup['name'], false) }}"
+                   class="btn btn-icon btn-sm btn-success"
+                   title="Download database backup"
+                   aria-label="Download database backup {{ $backup['name'] }}">
+                  @include('core/base::admin.partials.icon', ['name' => 'database'])
+                </a>
+                <a href="{{ route('admin.system.backups.download-uploads', $backup['name'], false) }}"
+                   class="btn btn-icon btn-sm btn-primary"
+                   title="Download backup of 'uploads' folder"
+                   aria-label="Download backup of uploads folder {{ $backup['name'] }}">
+                  @include('core/base::admin.partials.icon', ['name' => 'download'])
+                </a>
+                <button type="button" class="btn btn-icon btn-sm btn-info"
                         data-bs-toggle="modal" data-bs-target="#backup-restore-{{ $loop->index }}"
-                        aria-label="Restore {{ $backup['name'] }}">Restore</button>
-                <button type="button" class="btn btn-sm btn-outline-danger"
+                        title="Restore this backup"
+                        aria-label="Restore this backup {{ $backup['name'] }}">
+                  @include('core/base::admin.partials.icon', ['name' => 'reload'])
+                </button>
+                <button type="button" class="btn btn-icon btn-sm btn-danger"
                         data-bs-toggle="modal" data-bs-target="#backup-delete-{{ $loop->index }}"
-                        aria-label="Delete {{ $backup['name'] }}">Delete</button>
+                        title="Delete"
+                        aria-label="Delete {{ $backup['name'] }}">
+                  @include('core/base::admin.partials.icon', ['name' => 'trash'])
+                </button>
               </td>
             </tr>
           @empty
             <tr>
-              <td colspan="4" class="text-center text-secondary py-5">No backups yet. Create your first backup above.</td>
+              <td colspan="5" class="text-center text-secondary py-5">No backups yet. Generate your first backup above.</td>
             </tr>
           @endforelse
         </tbody>
       </table>
     </div>
-  </x-admin-card>
+  </div>
 
   @foreach ($backups as $backup)
     <x-admin-modal id="backup-restore-{{ $loop->index }}" title="Restore backup">
@@ -85,7 +112,7 @@
       </p>
       <p class="text-secondary mb-0">Database structure is not changed: it always comes from the current migrations.</p>
 
-      <form method="POST" action="{{ route('admin.backups.restore', $backup['name'], false) }}" id="backup-restore-form-{{ $loop->index }}">
+      <form method="POST" action="{{ route('admin.system.backups.restore', $backup['name'], false) }}" id="backup-restore-form-{{ $loop->index }}">
         @csrf
       </form>
 
@@ -99,7 +126,7 @@
       <p>Delete <strong>{{ $backup['name'] }}</strong>?</p>
       <p class="text-secondary mb-0">The archive file is removed permanently. Your live data is not touched.</p>
 
-      <form method="POST" action="{{ route('admin.backups.delete', $backup['name'], false) }}" id="backup-delete-form-{{ $loop->index }}">
+      <form method="POST" action="{{ route('admin.system.backups.delete', $backup['name'], false) }}" id="backup-delete-form-{{ $loop->index }}">
         @csrf
       </form>
 

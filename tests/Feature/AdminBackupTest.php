@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Sitewyn\Core\Base\Models\Permission;
@@ -58,6 +59,13 @@ class AdminBackupTest extends TestCase
         $this->assertArrayNotHasKey('migrations', $dump, 'Schema is owned by migrations and never dumped.');
 
         $zip->close();
+    }
+
+    public function test_backup_route_uses_system_url_prefix(): void
+    {
+        $this->assertTrue(Route::has('admin.system.backups.index'));
+        $this->assertSame('/admin/system/backups', route('admin.system.backups.index', [], false));
+        $this->assertFalse(Route::has('admin.backups.index'));
     }
 
     public function test_restore_roundtrip_returns_database_and_media_to_backup_state(): void
@@ -138,8 +146,8 @@ class AdminBackupTest extends TestCase
 
         Storage::disk('local')->put('backups/backup-broken.zip', 'definitely not a zip archive');
 
-        $this->post('/admin/backups/backup-broken.zip/restore')
-            ->assertRedirect('/admin/backups')
+        $this->post('/admin/system/backups/backup-broken.zip/restore')
+            ->assertRedirect('/admin/system/backups')
             ->assertSessionHas('error');
 
         $this->assertTrue(Storage::disk('local')->exists('backups/backup-broken.zip'));
@@ -151,7 +159,7 @@ class AdminBackupTest extends TestCase
 
         $name = $this->backups()->create();
 
-        $response = $this->get("/admin/backups/{$name}/download")->assertOk();
+        $response = $this->get("/admin/system/backups/{$name}/download")->assertOk();
 
         $this->assertStringContainsString('attachment; filename='.$name, (string) $response->headers->get('content-disposition'));
         $response->assertDownload($name);
@@ -160,18 +168,60 @@ class AdminBackupTest extends TestCase
         $this->assertStringStartsWith('PK', (string) file_get_contents(Storage::disk('local')->path('backups/'.$name)));
     }
 
+    public function test_download_database_backup_streams_database_json(): void
+    {
+        $this->actingAs($this->adminUser(), 'admin');
+
+        Page::query()->create([
+            'title' => 'About us',
+            'slug' => 'about-us',
+            'status' => Page::STATUS_DRAFT,
+        ]);
+
+        $name = $this->backups()->create();
+        $response = $this->get("/admin/system/backups/{$name}/download-database")->assertOk();
+
+        $this->assertStringContainsString(pathinfo($name, PATHINFO_FILENAME).'-database.json', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('"pages"', $response->getContent());
+        $this->assertStringContainsString('About us', $response->getContent());
+    }
+
+    public function test_download_uploads_backup_streams_uploads_only_archive(): void
+    {
+        $this->actingAs($this->adminUser(), 'admin');
+
+        Page::query()->create([
+            'title' => 'About us',
+            'slug' => 'about-us',
+            'status' => Page::STATUS_DRAFT,
+        ]);
+        Storage::disk('public')->put('2026/08/hero.txt', 'hero body');
+
+        $name = $this->backups()->create();
+        $response = $this->get("/admin/system/backups/{$name}/download-uploads")->assertOk();
+        $uploadsName = pathinfo($name, PATHINFO_FILENAME).'-uploads.zip';
+
+        $response->assertDownload($uploadsName);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open(Storage::disk('local')->path('backups/exports/'.$uploadsName)) === true);
+        $this->assertNotFalse($zip->locateName('2026/08/hero.txt'));
+        $this->assertFalse($zip->locateName('database.json'));
+        $zip->close();
+    }
+
     public function test_delete_removes_the_backup_file(): void
     {
         $this->actingAs($this->adminUser(), 'admin');
 
         $name = $this->backups()->create();
 
-        $this->post("/admin/backups/{$name}/delete")
-            ->assertRedirect('/admin/backups')
+        $this->post("/admin/system/backups/{$name}/delete")
+            ->assertRedirect('/admin/system/backups')
             ->assertSessionHas('status');
 
         $this->assertFalse(Storage::disk('local')->exists('backups/'.$name));
-        $this->get("/admin/backups/{$name}/download")->assertNotFound();
+        $this->get("/admin/system/backups/{$name}/download")->assertNotFound();
     }
 
     public function test_invalid_backup_names_are_rejected(): void
@@ -180,12 +230,14 @@ class AdminBackupTest extends TestCase
 
         // Anything outside ^backup-[A-Za-z0-9_-]+\.zip$ must 404, so neither
         // the route parameter nor the archive can reach other files.
-        $this->get('/admin/backups/.env/download')->assertNotFound();
-        $this->get('/admin/backups/backup-secret.zip/download')->assertNotFound();
-        $this->post('/admin/backups/backup-secret.zip/restore')->assertNotFound();
-        $this->post('/admin/backups/backup-secret.zip/delete')->assertNotFound();
+        $this->get('/admin/system/backups/.env/download')->assertNotFound();
+        $this->get('/admin/system/backups/backup-secret.zip/download')->assertNotFound();
+        $this->get('/admin/system/backups/backup-secret.zip/download-database')->assertNotFound();
+        $this->get('/admin/system/backups/backup-secret.zip/download-uploads')->assertNotFound();
+        $this->post('/admin/system/backups/backup-secret.zip/restore')->assertNotFound();
+        $this->post('/admin/system/backups/backup-secret.zip/delete')->assertNotFound();
 
-        $traversal = $this->get('/admin/backups/..%2F..%2F.env/download');
+        $traversal = $this->get('/admin/system/backups/..%2F..%2F.env/download');
         $traversal->assertNotFound();
         $this->assertStringNotContainsString('APP_KEY', $traversal->getContent());
 
@@ -195,25 +247,29 @@ class AdminBackupTest extends TestCase
 
     public function test_guest_is_redirected_from_backup_routes(): void
     {
-        $this->get('/admin/backups')->assertRedirect('/admin/login');
-        $this->post('/admin/backups')->assertRedirect('/admin/login');
-        $this->get('/admin/backups/backup-2026-08-30-184500.zip/download')->assertRedirect('/admin/login');
-        $this->post('/admin/backups/backup-2026-08-30-184500.zip/restore')->assertRedirect('/admin/login');
-        $this->post('/admin/backups/backup-2026-08-30-184500.zip/delete')->assertRedirect('/admin/login');
+        $this->get('/admin/system/backups')->assertRedirect('/admin/login');
+        $this->post('/admin/system/backups')->assertRedirect('/admin/login');
+        $this->get('/admin/system/backups/backup-2026-08-30-184500.zip/download')->assertRedirect('/admin/login');
+        $this->get('/admin/system/backups/backup-2026-08-30-184500.zip/download-database')->assertRedirect('/admin/login');
+        $this->get('/admin/system/backups/backup-2026-08-30-184500.zip/download-uploads')->assertRedirect('/admin/login');
+        $this->post('/admin/system/backups/backup-2026-08-30-184500.zip/restore')->assertRedirect('/admin/login');
+        $this->post('/admin/system/backups/backup-2026-08-30-184500.zip/delete')->assertRedirect('/admin/login');
     }
 
     public function test_backup_routes_require_backups_manage_permission(): void
     {
         $plain = $this->plainAdmin();
 
-        $this->actingAs($plain, 'admin')->get('/admin/backups')->assertForbidden();
-        $this->actingAs($plain, 'admin')->post('/admin/backups')->assertForbidden();
-        $this->actingAs($plain, 'admin')->get('/admin/backups/backup-2026-08-30-184500.zip/download')->assertForbidden();
-        $this->actingAs($plain, 'admin')->post('/admin/backups/backup-2026-08-30-184500.zip/restore')->assertForbidden();
-        $this->actingAs($plain, 'admin')->post('/admin/backups/backup-2026-08-30-184500.zip/delete')->assertForbidden();
+        $this->actingAs($plain, 'admin')->get('/admin/system/backups')->assertForbidden();
+        $this->actingAs($plain, 'admin')->post('/admin/system/backups')->assertForbidden();
+        $this->actingAs($plain, 'admin')->get('/admin/system/backups/backup-2026-08-30-184500.zip/download')->assertForbidden();
+        $this->actingAs($plain, 'admin')->get('/admin/system/backups/backup-2026-08-30-184500.zip/download-database')->assertForbidden();
+        $this->actingAs($plain, 'admin')->get('/admin/system/backups/backup-2026-08-30-184500.zip/download-uploads')->assertForbidden();
+        $this->actingAs($plain, 'admin')->post('/admin/system/backups/backup-2026-08-30-184500.zip/restore')->assertForbidden();
+        $this->actingAs($plain, 'admin')->post('/admin/system/backups/backup-2026-08-30-184500.zip/delete')->assertForbidden();
 
         $this->actingAs($this->userWithPermissions(['backups.manage']), 'admin')
-            ->get('/admin/backups')
+            ->get('/admin/system/backups')
             ->assertOk();
     }
 
@@ -221,8 +277,8 @@ class AdminBackupTest extends TestCase
     {
         $this->actingAs($this->userWithPermissions(['backups.manage']), 'admin');
 
-        $this->post('/admin/backups')
-            ->assertRedirect('/admin/backups')
+        $this->post('/admin/system/backups')
+            ->assertRedirect('/admin/system/backups')
             ->assertSessionHas('status');
 
         $files = Storage::disk('local')->files('backups');
@@ -236,28 +292,38 @@ class AdminBackupTest extends TestCase
         $viewer = $this->userWithPermissions(['backups.manage']);
         $this->actingAs($viewer, 'admin');
 
-        $this->get('/admin/backups')->assertOk()->assertSee('No backups yet');
+        $this->get('/admin/system/backups')->assertOk()->assertSee('No backups yet');
 
         $name = $this->backups()->create();
 
-        $this->get('/admin/backups')
+        $this->get('/admin/system/backups')
             ->assertOk()
             ->assertSee($name)
-            ->assertSee('Create backup')
-            ->assertSee('Restore')
-            ->assertSee('Delete');
+            ->assertSee('Generate backup')
+            ->assertSee('Description')
+            ->assertSee('Download database backup')
+            ->assertSee("Download backup of 'uploads' folder", false)
+            ->assertSee('Restore this backup')
+            ->assertSee('This simple backup feature is ideal for website having less than 1GB of data.')
+            ->assertSee('only uploaded files and database are included');
     }
 
-    public function test_backups_menu_item_requires_backups_manage_permission(): void
+    public function test_backups_are_not_in_sidebar_but_platform_card_requires_backups_manage_permission(): void
     {
         $registry = $this->app->make(AdminMenuRegistry::class);
 
-        $this->assertTrue($registry->has('backups'));
+        $this->assertFalse($registry->has('backups'));
 
         $viewer = $this->userWithPermissions(['backups.manage']);
 
-        $this->assertTrue($registry->visibleFor($viewer)->pluck('id')->contains('backups'));
+        $this->assertFalse($registry->visibleFor($viewer)->pluck('id')->contains('backups'));
         $this->assertFalse($registry->visibleFor($this->plainAdmin())->pluck('id')->contains('backups'));
+
+        $this->actingAs($viewer, 'admin')
+            ->get('/admin/system')
+            ->assertOk()
+            ->assertSee('href="/admin/system/backups"', false)
+            ->assertSee('Backup database and uploads folder.');
     }
 
     private function backups(): BackupService

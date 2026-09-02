@@ -54,8 +54,31 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('tag.delete'));
         $this->assertTrue($registry->has('menus.manage'));
         $this->assertTrue($registry->has('widgets.manage'));
-        $this->assertSame(39, $registry->all()->count());
-        $this->assertSame(['audit', 'backups', 'category', 'media', 'menus', 'page', 'permissions', 'plugins', 'post', 'roles', 'settings', 'system users', 'tag', 'users', 'widgets'], $registry->grouped()->keys()->sort()->values()->all());
+        $this->assertTrue($registry->has('media.folder.create'));
+        $this->assertTrue($registry->has('static_blocks.create'));
+        $this->assertTrue($registry->has('contact.custom_fields'));
+        $this->assertTrue($registry->has('custom_fields.edit'));
+        $this->assertTrue($registry->has('galleries.create'));
+        $this->assertTrue($registry->has('members.edit'));
+        $this->assertTrue($registry->has('settings.email'));
+        $this->assertTrue($registry->has('settings.website_tracking'));
+        $this->assertTrue($registry->has('settings.localization.theme_translations'));
+        $this->assertTrue($registry->has('api.sanctum_tokens.create'));
+        $this->assertTrue($registry->has('cronjobs.manage'));
+        $this->assertTrue($registry->has('security.manage'));
+        $this->assertTrue($registry->has('cleanup.manage'));
+        $this->assertTrue($registry->has('system.info'));
+        $this->assertTrue($registry->has('system.updater'));
+        $this->assertTrue($registry->has('license.manage'));
+        $this->assertTrue($registry->has('plugins.activate'));
+        $this->assertTrue($registry->has('appearance.theme_options'));
+        $this->assertTrue($registry->has('analytics.top_referrer'));
+        $this->assertTrue($registry->has('request_logs.index'));
+        $this->assertTrue($registry->has('request_logs.delete'));
+        $this->assertTrue($registry->has('tools.import_other_translations'));
+        $this->assertSame(123, $registry->all()->count());
+        $this->assertContains('settings common', $registry->grouped()->keys());
+        $this->assertContains('import export data', $registry->grouped()->keys());
     }
 
     public function test_permission_sync_command_persists_registered_permissions(): void
@@ -68,11 +91,13 @@ class PermissionRegistryTest extends TestCase
             'description' => 'Old description.',
         ]);
 
+        $permissionCount = $this->app->make(PermissionRegistry::class)->all()->count();
+
         $this->artisan('permission:sync')
-            ->expectsOutputToContain('Synced 39 permissions.')
+            ->expectsOutputToContain("Synced {$permissionCount} permissions.")
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('permissions', 39);
+        $this->assertDatabaseCount('permissions', $permissionCount);
         $this->assertDatabaseHas('permissions', [
             'name' => 'View users',
             'key' => 'users.index',
@@ -136,6 +161,26 @@ class PermissionRegistryTest extends TestCase
             'key' => 'tag.index',
             'module' => 'package/blog',
             'group' => 'tag',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'settings.email',
+            'module' => 'core/base',
+            'group' => 'settings common',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'appearance.theme_options',
+            'module' => 'core/base',
+            'group' => 'appearance',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'request_logs.index',
+            'module' => 'core/base',
+            'group' => 'request logs',
+        ]);
+        $this->assertDatabaseHas('permissions', [
+            'key' => 'tools.export_pages',
+            'module' => 'core/base',
+            'group' => 'import export data',
         ]);
     }
 }

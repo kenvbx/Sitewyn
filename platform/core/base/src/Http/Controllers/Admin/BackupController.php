@@ -8,6 +8,7 @@ use Illuminate\Routing\Controller;
 use InvalidArgumentException;
 use Sitewyn\Core\Base\Support\BackupService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class BackupController extends Controller
@@ -28,12 +29,12 @@ class BackupController extends Controller
         } catch (Throwable $exception) {
             admin_flash()->error($exception->getMessage());
 
-            return redirect()->route('admin.backups.index');
+            return redirect()->route('admin.system.backups.index');
         }
 
         admin_flash()->success("Backup [{$name}] created.");
 
-        return redirect()->route('admin.backups.index');
+        return redirect()->route('admin.system.backups.index');
     }
 
     public function download(string $name): BinaryFileResponse
@@ -47,6 +48,31 @@ class BackupController extends Controller
         return response()->download($path, $name);
     }
 
+    public function downloadDatabase(string $name): Response
+    {
+        try {
+            $contents = $this->backups->databaseDump($name);
+        } catch (InvalidArgumentException) {
+            abort(404);
+        }
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="'.$this->backups->databaseDownloadName($name).'"',
+        ]);
+    }
+
+    public function downloadUploads(string $name): BinaryFileResponse
+    {
+        try {
+            $archive = $this->backups->uploadsArchive($name);
+        } catch (InvalidArgumentException) {
+            abort(404);
+        }
+
+        return response()->download($archive['path'], $archive['name']);
+    }
+
     public function restore(string $name): RedirectResponse
     {
         try {
@@ -56,14 +82,14 @@ class BackupController extends Controller
         } catch (Throwable $exception) {
             admin_flash()->error($exception->getMessage());
 
-            return redirect()->route('admin.backups.index');
+            return redirect()->route('admin.system.backups.index');
         }
 
         admin_flash()->success(
             "Backup [{$name}] restored. All current data and media were replaced with the snapshot."
         );
 
-        return redirect()->route('admin.backups.index');
+        return redirect()->route('admin.system.backups.index');
     }
 
     public function delete(string $name): RedirectResponse
@@ -75,11 +101,11 @@ class BackupController extends Controller
         } catch (Throwable $exception) {
             admin_flash()->error($exception->getMessage());
 
-            return redirect()->route('admin.backups.index');
+            return redirect()->route('admin.system.backups.index');
         }
 
         admin_flash()->success("Backup [{$name}] deleted.");
 
-        return redirect()->route('admin.backups.index');
+        return redirect()->route('admin.system.backups.index');
     }
 }

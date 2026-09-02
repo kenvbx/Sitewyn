@@ -128,13 +128,13 @@ class SeoFilesTest extends TestCase
         $this->assertSame("User-agent: *\nDisallow: /", $response->getContent());
     }
 
-    public function test_settings_form_presents_robots_txt_prefilled_with_the_default(): void
+    public function test_settings_hub_presents_permalink_settings(): void
     {
         $this->actingAsSuperAdmin()
             ->get('/admin/settings')
             ->assertOk()
-            ->assertSee('name="robots_txt"', false)
-            ->assertSee('User-agent: *', false);
+            ->assertSee('Permalink')
+            ->assertSee('View and update your permalink settings');
     }
 
     public function test_robots_txt_setting_rejects_more_than_2000_characters(): void

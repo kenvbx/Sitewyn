@@ -25,7 +25,7 @@ class AdminSettingsTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_super_admin_can_view_settings_form(): void
+    public function test_super_admin_can_view_settings_hub(): void
     {
         $admin = User::factory()->create([
             'is_super_admin' => true,
@@ -36,11 +36,15 @@ class AdminSettingsTest extends TestCase
             ->get('/admin/settings')
             ->assertOk()
             ->assertSee('Settings')
-            ->assertSee('General settings')
-            ->assertSee('name="site_name"', false)
-            ->assertSee('name="site_logo"', false)
-            ->assertSee('class="needs-validation"', false)
-            ->assertSee('data-admin-validate', false);
+            ->assertSee('Common')
+            ->assertSee('General')
+            ->assertSee('View and update your general settings and activate license')
+            ->assertSee('Email templates')
+            ->assertSee('Website Tracking')
+            ->assertSee('Localization')
+            ->assertSee('Theme Translations')
+            ->assertSee('Others')
+            ->assertSee('Google Analytics');
     }
 
     public function test_super_admin_can_update_general_settings_and_refresh_cache(): void

@@ -1,9 +1,5 @@
 @extends('core/base::admin.layouts.master')
 
-@section('title', 'Create role - ' . config('app.name', 'Sitewyn') . ' Admin')
-@section('pretitle', 'Access Control')
-@section('page-title', 'Create role')
-
 @section('breadcrumbs')
   <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
   <li class="breadcrumb-item"><a href="{{ route('admin.system.roles.index') }}">Roles</a></li>

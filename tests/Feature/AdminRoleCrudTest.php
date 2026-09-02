@@ -125,7 +125,7 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('<div class="card-actions">', false)
             ->assertSee('<label class="form-check mb-0">', false)
             ->assertSee('id="expandCollapseAllTree" class="form-check-input label label-default allTree"', false)
-            ->assertSee('<span class="form-check-label">All Permissions</span>', false)
+            ->assertSee('<span class="form-check-label badge bg-primary-lt">All Permissions</span>', false)
             // The ms-auto slot moved from the master label to the
             // collapse/expand links on the right of the header (master
             // stays left next to the title); the links are wired by
@@ -139,13 +139,12 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('<li class="permissions-item list-unstyled">', false)
             ->assertSee('<div class="permissions-header">', false)
             ->assertSee('<ul class="row permissions-body has-children">', false)
-            // Module cards follow the registry modules: Core / Pages /
-            // Blog / Media, success badges, checkbox without name (the
-            // module is a grouping node, not a permission).
-            ->assertSee('<span class="badge bg-success-lt">Core</span>', false)
-            ->assertSee('<span class="badge bg-success-lt">Pages</span>', false)
-            ->assertSee('<span class="badge bg-success-lt">Blog</span>', false)
-            ->assertSee('<span class="badge bg-success-lt">Media</span>', false)
+            // Module cards are grouped like the ACL reference: CMS,
+            // Settings, System, Tools.
+            ->assertSee('<span class="badge bg-success-lt">CMS</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">Settings</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">System</span>', false)
+            ->assertSee('<span class="badge bg-success-lt">Tools</span>', false)
             ->assertSee('<input type="checkbox" id="checkbox_one_0" class="form-check-input check-success">', false)
             // Feature groups render as col-4 items with primary badges;
             // Botble's node ids (node_sub_m_f / node_sub_sub_n /
@@ -155,25 +154,31 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('<li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_0_0">', false)
             ->assertSee('<li style="background-color: inherit" id="node_sub_sub_0">', false)
             ->assertSee('<li style="background-color: inherit" id="node_grand_child0">', false)
-            ->assertSee('<input type="checkbox" id="checkbox_two_0_0" name="permissions[]" class="form-check-input" value="users.index"', false)
-            ->assertSee('<input type="checkbox" id="checkbox_two_0_1" class="form-check-input">', false)
+            ->assertSee('<input type="checkbox" id="checkbox_two_0_0" name="permissions[]" class="form-check-input" value="media.index"', false)
+            ->assertSee('<input type="checkbox" id="checkbox_two_0_1" name="permissions[]" class="form-check-input" value="page.index"', false)
             ->assertSee('<input type="checkbox" id="checkbox_three_0" class="form-check-input check-yellow">', false)
-            ->assertSee('<span class="badge bg-primary-lt">Users</span>', false)
-            ->assertSee('<span class="badge bg-primary-lt">System</span>', false)
-            ->assertSee('<span class="badge bg-primary-lt">Roles</span>', false)
-            ->assertSee('<span class="badge bg-primary-lt">Menus</span>', false)
-            ->assertSee('<span class="badge bg-primary-lt">Widgets</span>', false)
-            ->assertSee('<span class="badge bg-primary-lt">Posts</span>', false)
-            ->assertSee('<span class="badge bg-yellow-lt">System Users</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Media</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Pages</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Static Blocks</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Blog</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Contact</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Custom Fields</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Common</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Appearance</span>', false)
+            ->assertSee('<span class="badge bg-primary-lt">Import/Export Data</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">File</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">Folder</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">Posts</span>', false)
+            ->assertSee('<span class="badge bg-yellow-lt">Sanctum Token</span>', false)
             // Real permission checkboxes submit the original key via
             // permissions[]; the group's .index permission rides on the
             // feature checkbox, remaining actions and single-action
             // features (Settings/Plugins/Backups/Menus/Widgets) render as
             // leaves with the short verbs Botble's leaves use.
             ->assertSee('name="permissions[]" class="form-check-input" value="page.index"', false)
-            ->assertSee('name="permissions[]" class="form-check-input" value="post.index"', false)
-            ->assertSee('name="permissions[]" class="form-check-input" value="category.index"', false)
-            ->assertSee('name="permissions[]" class="form-check-input" value="tag.index"', false)
+            ->assertSee('value="post.index"', false)
+            ->assertSee('value="category.index"', false)
+            ->assertSee('value="tag.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="media.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="roles.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="permissions.index"', false)
@@ -181,12 +186,22 @@ class AdminRoleCrudTest extends TestCase
             ->assertSee('name="permissions[]" class="form-check-input" value="media.upload"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="system.users.index"', false)
             ->assertSee('name="permissions[]" class="form-check-input" value="system.users.create"', false)
-            ->assertSee('name="permissions[]" class="form-check-input" value="menus.manage"', false)
+            ->assertSee('value="menus.manage"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="static_blocks.create"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="contact.custom_fields"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="settings.website_tracking"', false)
+            ->assertSee('value="api.sanctum_tokens.create"', false)
+            ->assertSee('value="appearance.theme_options"', false)
+            ->assertSee('name="permissions[]" class="form-check-input" value="tools.import_other_translations"', false)
             ->assertSeeText('Create')
             ->assertSeeText('Edit')
             ->assertSeeText('Delete')
-            ->assertSeeText('View list')
-            ->assertSeeText('Upload')
+            ->assertSeeText('Trash')
+            ->assertSeeText('Admin Appearance')
+            ->assertSeeText('Robots.txt Editor')
+            ->assertSeeText('Export Pages')
+            ->assertDontSeeText('View list')
+            ->assertDontSeeText('Upload')
             ->assertDontSee('<span class="form-check-label">Manage</span>', false)
             // Botble core.css .permissions-tree rules verbatim (the
             // .daredevel-tree rules of the old markup are gone with it),

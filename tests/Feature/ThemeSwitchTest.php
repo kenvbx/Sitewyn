@@ -116,9 +116,8 @@ class ThemeSwitchTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/admin/settings')
             ->assertOk()
-            ->assertSee('name="active_theme"', false)
-            ->assertSee('Sitewyn Default')
-            ->assertSee('Test Marker');
+            ->assertSee('Admin appearance')
+            ->assertSee('View and update logo, favicon, layout,...');
 
         $this->actingAs($admin, 'admin')
             ->from('/admin/settings')

@@ -158,15 +158,16 @@ class AdminLanguagesTest extends TestCase
         $this->assertDatabaseHas('languages', ['code' => 'en', 'is_default' => false]);
     }
 
-    public function test_settings_form_links_to_language_management(): void
+    public function test_settings_hub_links_to_language_management(): void
     {
         $admin = $this->superAdmin();
 
         $this->actingAs($admin, 'admin')
             ->get('/admin/settings')
             ->assertOk()
-            ->assertSee('Manage languages')
-            ->assertSee(route('admin.settings.languages.index'), false);
+            ->assertSee('Languages')
+            ->assertSee('View and update your website languages')
+            ->assertSee(route('admin.settings.languages.index', [], false), false);
     }
 
     private function superAdmin(): User

@@ -53,7 +53,7 @@
                 <div class="d-flex">
                     <label class="form-check mb-0">
                         <input type="checkbox" id="expandCollapseAllTree" class="form-check-input label label-default allTree">
-                        <span class="form-check-label">All Permissions</span>
+                        <span class="form-check-label badge bg-primary-lt">All Permissions</span>
                       </label>
                       <div class="d-flex align-items-center gap-2 ms-3">
                         <a href="#" id="collapseAllTree" class="link-secondary text-decoration-none">Collapse all</a>
@@ -113,7 +113,7 @@
                       {{-- Real-permission feature without leaves
                            (Permissions/Audit): flat li, badge stays. --}}
                       <li class="list-unstyled col-4 m-0" style="background-color: inherit" id="node_sub_{{ $moduleIndex }}_{{ $featureIndex }}">
-                        <label class="form-check">
+                        <label class="form-check mb-0">
                           <input type="checkbox" id="checkbox_two_{{ $moduleIndex }}_{{ $featureIndex }}" name="permissions[]" class="form-check-input" value="{{ $feature['permission'] }}" @checked(in_array($feature['permission'], old('permissions', $active), true))>
                           <span class="form-check-label">
                             <span class="badge bg-primary-lt">{{ $feature['name'] }}</span>
@@ -135,12 +135,15 @@
                         <ul class="list-unstyled">
                           @foreach ($feature['children'] as $subIndex => $child)
                             @if (isset($child['name']))
-                              {{-- Sub level (only Core → System Users):
-                                   yellow badge; the grouping checkbox
-                                   submits nothing. --}}
+                              {{-- Sub level: yellow badge; some grouping
+                                   nodes submit a real permission. --}}
                               <li style="background-color: inherit" id="node_sub_sub_{{ $subIndex }}">
-                                <label class="form-check">
-                                  <input type="checkbox" id="checkbox_three_{{ $subIndex }}" class="form-check-input check-yellow">
+                                <label class="form-check mb-0">
+                                  @if ($child['permission'] ?? null)
+                                    <input type="checkbox" id="checkbox_three_{{ $subIndex }}" name="permissions[]" class="form-check-input check-yellow" value="{{ $child['permission'] }}" @checked(in_array($child['permission'], old('permissions', $active), true))>
+                                  @else
+                                    <input type="checkbox" id="checkbox_three_{{ $subIndex }}" class="form-check-input check-yellow">
+                                  @endif
                                   <span class="form-check-label">
                                     <span class="badge bg-yellow-lt">{{ $child['name'] }}</span>
                                   </span>
@@ -148,7 +151,7 @@
                                 <ul class="list-unstyled">
                                   @foreach ($child['children'] as $leafIndex => $leaf)
                                     <li style="background-color: inherit" id="node_grand_child{{ $leafIndex }}">
-                                      <label class="form-check">
+                                      <label class="form-check mb-0">
                                         <input type="checkbox" id="checkbox_four_{{ $leafIndex }}" name="permissions[]" class="form-check-input" value="{{ $leaf['key'] }}" @checked(in_array($leaf['key'], old('permissions', $active), true))>
                                         <span class="form-check-label">{{ $leaf['text'] }}</span>
                                       </label>
@@ -158,7 +161,7 @@
                               </li>
                             @else
                               <li style="background-color: inherit" id="node_sub_sub_{{ $subIndex }}">
-                                <label class="form-check">
+                                <label class="form-check mb-0">
                                   <input type="checkbox" id="checkbox_three_{{ $subIndex }}" name="permissions[]" class="form-check-input" value="{{ $child['key'] }}" @checked(in_array($child['key'], old('permissions', $active), true))>
                                   <span class="form-check-label">{{ $child['text'] }}</span>
                                 </label>

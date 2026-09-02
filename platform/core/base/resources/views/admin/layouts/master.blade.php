@@ -446,7 +446,7 @@
             @endif
             <div class="row g-2 align-items-center">
               <div class="col">
-                <div class="page-pretitle">@yield('pretitle', 'Admin')</div>
+                <div class="page-pretitle d-none">@yield('pretitle', 'Admin')</div>
                 <h2 class="page-title">@yield('page-title')</h2>
               </div>
               <div class="col-auto ms-auto d-print-none">@yield('page-actions')</div>

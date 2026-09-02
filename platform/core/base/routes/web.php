@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Sitewyn\Core\Base\Http\Controllers\Admin\AuditLogController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\AuthController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\BackupController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\CacheController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\CleanupController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\CronjobController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\DashboardController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\LanguageController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\MenuController;
@@ -11,9 +14,13 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PlatformAdminController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PluginManageController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\RequestLogController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\RoleController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SearchController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SecurityController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SettingController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SystemInfoController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\SystemUpdaterController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\SystemUserController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\UserController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\WidgetController;
@@ -161,21 +168,78 @@ Route::prefix('admin')
                 ->middleware('permission:audit.index')
                 ->name('audit-logs.index');
 
-            Route::get('backups', [BackupController::class, 'index'])
+            Route::get('request-logs', [RequestLogController::class, 'index'])
+                ->middleware('permission:request_logs.index')
+                ->name('request-logs.index');
+            Route::delete('request-logs/bulk-destroy', [RequestLogController::class, 'bulkDestroy'])
+                ->middleware('permission:request_logs.delete')
+                ->name('request-logs.bulk-destroy');
+            Route::delete('request-logs/clear', [RequestLogController::class, 'clear'])
+                ->middleware('permission:request_logs.delete')
+                ->name('request-logs.clear');
+            Route::delete('request-logs/{requestLog}', [RequestLogController::class, 'destroy'])
+                ->middleware('permission:request_logs.delete')
+                ->name('request-logs.destroy');
+
+            Route::get('system/backups', [BackupController::class, 'index'])
                 ->middleware('permission:backups.manage')
-                ->name('backups.index');
-            Route::post('backups', [BackupController::class, 'create'])
+                ->name('system.backups.index');
+            Route::post('system/backups', [BackupController::class, 'create'])
                 ->middleware('permission:backups.manage')
-                ->name('backups.create');
-            Route::get('backups/{name}/download', [BackupController::class, 'download'])
+                ->name('system.backups.create');
+            Route::get('system/backups/{name}/download', [BackupController::class, 'download'])
                 ->middleware('permission:backups.manage')
-                ->name('backups.download');
-            Route::post('backups/{name}/restore', [BackupController::class, 'restore'])
+                ->name('system.backups.download');
+            Route::get('system/backups/{name}/download-database', [BackupController::class, 'downloadDatabase'])
                 ->middleware('permission:backups.manage')
-                ->name('backups.restore');
-            Route::post('backups/{name}/delete', [BackupController::class, 'delete'])
+                ->name('system.backups.download-database');
+            Route::get('system/backups/{name}/download-uploads', [BackupController::class, 'downloadUploads'])
                 ->middleware('permission:backups.manage')
-                ->name('backups.delete');
+                ->name('system.backups.download-uploads');
+            Route::post('system/backups/{name}/restore', [BackupController::class, 'restore'])
+                ->middleware('permission:backups.manage')
+                ->name('system.backups.restore');
+            Route::post('system/backups/{name}/delete', [BackupController::class, 'delete'])
+                ->middleware('permission:backups.manage')
+                ->name('system.backups.delete');
+
+            Route::get('system/cronjob', CronjobController::class)
+                ->middleware('permission:cronjobs.manage')
+                ->name('system.cronjob');
+
+            Route::get('system/security', SecurityController::class)
+                ->middleware('permission:security.manage')
+                ->name('system.security');
+
+            Route::get('system/cache', [CacheController::class, 'index'])
+                ->middleware('permission:settings.cache')
+                ->name('system.cache.index');
+            Route::post('system/cache/{operation}', [CacheController::class, 'run'])
+                ->middleware('permission:settings.cache')
+                ->whereIn('operation', ['clear-cms', 'refresh-views', 'clear-config', 'clear-routes', 'clear-logs', 'optimize', 'clear-optimization'])
+                ->name('system.cache.run');
+
+            Route::get('system/cleanup', [CleanupController::class, 'index'])
+                ->middleware('permission:cleanup.manage')
+                ->name('system.cleanup.index');
+            Route::post('system/cleanup', [CleanupController::class, 'cleanup'])
+                ->middleware('permission:cleanup.manage')
+                ->name('system.cleanup.run');
+
+            Route::get('system/info', SystemInfoController::class)
+                ->middleware('permission:system.info')
+                ->name('system.info');
+
+            Route::get('system/updater', [SystemUpdaterController::class, 'index'])
+                ->middleware('permission:system.updater')
+                ->name('system.updater.index');
+            Route::post('system/updater/reinstall', [SystemUpdaterController::class, 'reinstall'])
+                ->middleware('permission:system.updater')
+                ->name('system.updater.reinstall');
+            Route::post('system/updater/steps/{step}', [SystemUpdaterController::class, 'runStep'])
+                ->middleware('permission:system.updater')
+                ->whereNumber('step')
+                ->name('system.updater.steps.run');
 
             Route::get('menus', [MenuController::class, 'index'])
                 ->middleware('permission:menus.manage')

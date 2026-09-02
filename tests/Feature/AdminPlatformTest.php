@@ -25,7 +25,7 @@ class AdminPlatformTest extends TestCase
         $this->get('/admin/system')->assertRedirect('/admin/login');
     }
 
-    public function test_super_admin_sees_all_ten_tool_cards(): void
+    public function test_super_admin_sees_all_platform_tool_cards(): void
     {
         $content = $this->actingAs($this->adminUser(), 'admin')
             ->get('/admin/system')
@@ -35,19 +35,31 @@ class AdminPlatformTest extends TestCase
         foreach ([
             'View and update your system users.',
             'View and update your roles and permissions.',
+            'View and delete your system activity logs.',
+            'View and delete your system request logs.',
+            'Backup database and uploads folder.',
+            'Set up automated background tasks to keep your website running smoothly.',
+            'Manage cookie security and HTTP headers',
+            'Clear cache to make your site up to date.',
+            'Cleanup your unused data in database.',
+            'All information about current system configuration.',
+            'Update your system to the latest version.',
+        ] as $description) {
+            $this->assertStringContainsString($description, $content);
+        }
+
+        foreach ([
             'Browse every registered permission by module.',
             'Manage your media library files and folders.',
             'Build and organize your frontend navigation.',
             'Place content widgets into your theme areas.',
             'Activate or deactivate platform plugins.',
-            'Review every recorded admin activity.',
-            'Back up your database and uploads folder.',
             'Configure your site name, theme and options.',
         ] as $description) {
-            $this->assertStringContainsString($description, $content);
+            $this->assertStringNotContainsString($description, $content);
         }
 
-        $this->assertSame(10, substr_count($content, 'data-platform-card="'));
+        $this->assertSame(11, substr_count($content, 'data-platform-card="'));
     }
 
     public function test_users_card_links_to_the_team_surface(): void
@@ -93,7 +105,13 @@ class AdminPlatformTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('View and update your system users.', $content);
-        $this->assertStringNotContainsString('Back up your database and uploads folder.', $content);
+        $this->assertStringNotContainsString('Backup database and uploads folder.', $content);
+        $this->assertStringNotContainsString('Set up automated background tasks to keep your website running smoothly.', $content);
+        $this->assertStringNotContainsString('Manage cookie security and HTTP headers', $content);
+        $this->assertStringNotContainsString('Clear cache to make your site up to date.', $content);
+        $this->assertStringNotContainsString('Cleanup your unused data in database.', $content);
+        $this->assertStringNotContainsString('All information about current system configuration.', $content);
+        $this->assertStringNotContainsString('Update your system to the latest version.', $content);
         $this->assertSame(1, substr_count($content, 'data-platform-card="'));
     }
 

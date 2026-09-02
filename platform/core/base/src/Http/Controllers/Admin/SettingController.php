@@ -29,6 +29,7 @@ class SettingController extends Controller
                 'active_theme' => $this->settings->get('active_theme', ThemeManager::DEFAULT_THEME),
             ],
             'themeOptions' => $this->themes->all()->pluck('name', 'slug')->all(),
+            'sections' => $this->sections(),
         ]);
     }
 
@@ -50,5 +51,53 @@ class SettingController extends Controller
 
         return redirect()
             ->route('admin.settings.edit');
+    }
+
+    /**
+     * @return array<int, array{title: string, items: array<int, array{title: string, description: string, icon: string, url: string}>}>
+     */
+    private function sections(): array
+    {
+        return [
+            [
+                'title' => 'Common',
+                'items' => [
+                    ['title' => 'General', 'description' => 'View and update your general settings and activate license', 'icon' => 'settings', 'url' => '#'],
+                    ['title' => 'Email', 'description' => 'View and update your email settings and email templates', 'icon' => 'request-log', 'url' => '#'],
+                    ['title' => 'Email templates', 'description' => 'Email templates using HTML & system variables.', 'icon' => 'request-log', 'url' => '#'],
+                    ['title' => 'Email rules', 'description' => 'Configure email rules for validation', 'icon' => 'request-log', 'url' => '#'],
+                    ['title' => 'Phone Number', 'description' => 'Configure phone number field settings', 'icon' => 'users', 'url' => '#'],
+                    ['title' => 'Media', 'description' => 'View and update your media settings', 'icon' => 'category', 'url' => route('admin.media.index', [], false)],
+                    ['title' => 'Permalink', 'description' => 'View and update your permalink settings', 'icon' => 'route', 'url' => '#'],
+                    ['title' => 'Languages', 'description' => 'View and update your website languages', 'icon' => 'globe', 'url' => route('admin.settings.languages.index', [], false)],
+                    ['title' => 'Admin appearance', 'description' => 'View and update logo, favicon, layout,...', 'icon' => 'settings', 'url' => '#'],
+                    ['title' => 'API Settings', 'description' => 'View and update your API settings', 'icon' => 'key', 'url' => '#'],
+                    ['title' => 'Cache', 'description' => 'Configure caching for optimized speed', 'icon' => 'reload', 'url' => route('admin.system.cache.index', [], false)],
+                    ['title' => 'Datatables', 'description' => 'Settings for datatables', 'icon' => 'database', 'url' => '#'],
+                    ['title' => 'Website Tracking', 'description' => 'Choose your preferred analytics and tracking method. Only one option can be active at a time.', 'icon' => 'globe', 'url' => '#'],
+                    ['title' => 'Optimize', 'description' => 'Minify HTML output, inline CSS, remove comments...', 'icon' => 'bolt', 'url' => '#'],
+                ],
+            ],
+            [
+                'title' => 'Localization',
+                'items' => [
+                    ['title' => 'Locales', 'description' => 'View, download and import locales', 'icon' => 'globe', 'url' => route('admin.settings.languages.index', [], false)],
+                    ['title' => 'Theme Translations', 'description' => 'Manage the theme translations', 'icon' => 'globe', 'url' => '#'],
+                    ['title' => 'Other Translations', 'description' => 'Manage the other translations (admin, plugins, packages...)', 'icon' => 'request-log', 'url' => '#'],
+                ],
+            ],
+            [
+                'title' => 'Others',
+                'items' => [
+                    ['title' => 'FOB Comment', 'description' => 'Configure settings for FOB Comment', 'icon' => 'request-log', 'url' => '#'],
+                    ['title' => 'Social Login', 'description' => 'View and update your social login settings', 'icon' => 'users', 'url' => '#'],
+                    ['title' => 'Blog', 'description' => 'View and update blog settings', 'icon' => 'post', 'url' => '#'],
+                    ['title' => 'Contact', 'description' => 'Settings for contact plugin', 'icon' => 'request-log', 'url' => '#'],
+                    ['title' => 'Captcha', 'description' => 'View and update reCAPTCHA and Math CAPTCHA.', 'icon' => 'reload', 'url' => '#'],
+                    ['title' => 'Google Analytics', 'description' => 'Config Credentials for Google Analytics', 'icon' => 'audit', 'url' => '#'],
+                    ['title' => 'Member', 'description' => 'View and update member settings', 'icon' => 'users', 'url' => '#'],
+                ],
+            ],
+        ];
     }
 }

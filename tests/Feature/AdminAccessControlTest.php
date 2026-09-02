@@ -105,9 +105,17 @@ class AdminAccessControlTest extends TestCase
             '/admin/users',
             '/admin/system/users',
             '/admin/system/roles',
+            '/admin/system/backups',
+            '/admin/system/cronjob',
+            '/admin/system/security',
+            '/admin/system/cache',
+            '/admin/system/cleanup',
+            '/admin/system/info',
+            '/admin/system/updater',
             '/admin/permissions',
             '/admin/settings',
             '/admin/media',
+            '/admin/request-logs',
         ];
     }
 
@@ -120,9 +128,17 @@ class AdminAccessControlTest extends TestCase
             ['path' => '/admin/users', 'permission' => 'users.index'],
             ['path' => '/admin/system/users', 'permission' => 'system.users.index'],
             ['path' => '/admin/system/roles', 'permission' => 'roles.index'],
+            ['path' => '/admin/system/backups', 'permission' => 'backups.manage'],
+            ['path' => '/admin/system/cronjob', 'permission' => 'cronjobs.manage'],
+            ['path' => '/admin/system/security', 'permission' => 'security.manage'],
+            ['path' => '/admin/system/cache', 'permission' => 'settings.cache'],
+            ['path' => '/admin/system/cleanup', 'permission' => 'cleanup.manage'],
+            ['path' => '/admin/system/info', 'permission' => 'system.info'],
+            ['path' => '/admin/system/updater', 'permission' => 'system.updater'],
             ['path' => '/admin/permissions', 'permission' => 'permissions.index'],
             ['path' => '/admin/settings', 'permission' => 'settings.edit'],
             ['path' => '/admin/media', 'permission' => 'media.index'],
+            ['path' => '/admin/request-logs', 'permission' => 'request_logs.index'],
         ];
     }
 }
