@@ -42,7 +42,21 @@ class AdminLanguagesTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($user, 'admin')
+            ->put('/admin/settings/languages/settings', [
+                'language_display' => 'all',
+                'language_switcher_display' => 'dropdown',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user, 'admin')
             ->post('/admin/settings/languages/'.$english->id.'/delete')
+            ->assertForbidden();
+
+        $this->actingAs($user, 'admin')
+            ->put('/admin/settings/languages/'.$english->id, [
+                'code' => 'en',
+                'name' => 'English',
+            ])
             ->assertForbidden();
 
         $this->actingAs($user, 'admin')
@@ -59,8 +73,22 @@ class AdminLanguagesTest extends TestCase
             ->assertOk()
             ->assertSee('English')
             ->assertSee('Default')
-            ->assertSee('Add language')
-            ->assertSee('name="code"', false);
+            ->assertSee('Detail')
+            ->assertSee('Settings')
+            ->assertSee('Choose a language')
+            ->assertSee('Language name')
+            ->assertSee('Locale')
+            ->assertSee('Language code')
+            ->assertSee('Text direction')
+            ->assertSee('Flag')
+            ->assertSee('Order')
+            ->assertSee('Is default?')
+            ->assertSee('Actions')
+            ->assertSee('Add new language')
+            ->assertSee('name="code"', false)
+            ->assertSee('name="locale"', false)
+            ->assertSee('name="text_direction"', false)
+            ->assertSee('name="flag"', false);
     }
 
     public function test_super_admin_can_add_a_language(): void
@@ -77,6 +105,120 @@ class AdminLanguagesTest extends TestCase
             'name' => 'Vietnamese',
             'is_default' => false,
             'is_active' => true,
+        ]);
+    }
+
+    public function test_super_admin_can_add_a_language_with_detail_fields(): void
+    {
+        $admin = $this->superAdmin();
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/settings/languages', [
+                'code' => 'ar',
+                'name' => 'Arabic',
+                'locale' => 'ar',
+                'flag' => 'sa',
+                'text_direction' => 'rtl',
+                'order' => 5,
+            ])
+            ->assertRedirect('/admin/settings/languages')
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('languages', [
+            'code' => 'ar',
+            'name' => 'Arabic',
+            'locale' => 'ar',
+            'flag' => 'sa',
+            'text_direction' => 'rtl',
+            'order' => 5,
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_super_admin_can_update_a_language(): void
+    {
+        $admin = $this->superAdmin();
+
+        $language = Language::query()->create([
+            'code' => 'vi',
+            'name' => 'Vietnamese',
+            'locale' => 'vi',
+            'flag' => 'vn',
+            'text_direction' => 'ltr',
+            'order' => 1,
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put('/admin/settings/languages/'.$language->id, [
+                'code' => 'vi',
+                'name' => 'Tiếng Việt',
+                'locale' => 'vi',
+                'flag' => 'vn',
+                'text_direction' => 'ltr',
+                'order' => 2,
+            ])
+            ->assertRedirect('/admin/settings/languages')
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('languages', [
+            'id' => $language->id,
+            'code' => 'vi',
+            'name' => 'Tiếng Việt',
+            'locale' => 'vi',
+            'flag' => 'vn',
+            'text_direction' => 'ltr',
+            'order' => 2,
+        ]);
+    }
+
+    public function test_super_admin_can_update_language_settings(): void
+    {
+        $admin = $this->superAdmin();
+
+        Language::query()->create([
+            'code' => 'vi',
+            'name' => 'Vietnamese',
+            'locale' => 'vi',
+            'flag' => 'vn',
+            'text_direction' => 'ltr',
+            'order' => 1,
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put('/admin/settings/languages/settings', [
+                'language_hide_default_from_url' => '1',
+                'language_display' => 'flag',
+                'language_switcher_display' => 'list',
+                'language_hidden_codes' => ['en', 'vi'],
+                'language_auto_detect' => '1',
+            ])
+            ->assertRedirect('/admin/settings/languages?tab=settings')
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('settings', [
+            'key' => 'language_hide_default_from_url',
+            'value' => '1',
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'language_display',
+            'value' => 'flag',
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'language_switcher_display',
+            'value' => 'list',
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'language_hidden_codes',
+            'value' => json_encode(['vi']),
+        ]);
+        $this->assertDatabaseHas('settings', [
+            'key' => 'language_auto_detect',
+            'value' => '1',
         ]);
     }
 

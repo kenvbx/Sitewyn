@@ -61,6 +61,9 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('galleries.create'));
         $this->assertTrue($registry->has('members.edit'));
         $this->assertTrue($registry->has('settings.email'));
+        $this->assertTrue($registry->has('settings.media'));
+        $this->assertTrue($registry->has('settings.permalink'));
+        $this->assertTrue($registry->has('settings.phone_number'));
         $this->assertTrue($registry->has('settings.website_tracking'));
         $this->assertTrue($registry->has('settings.localization.theme_translations'));
         $this->assertTrue($registry->has('api.sanctum_tokens.create'));
@@ -76,7 +79,7 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('request_logs.index'));
         $this->assertTrue($registry->has('request_logs.delete'));
         $this->assertTrue($registry->has('tools.import_other_translations'));
-        $this->assertSame(123, $registry->all()->count());
+        $this->assertSame(124, $registry->all()->count());
         $this->assertContains('settings common', $registry->grouped()->keys());
         $this->assertContains('import export data', $registry->grouped()->keys());
     }

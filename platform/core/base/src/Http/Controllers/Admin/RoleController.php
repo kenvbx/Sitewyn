@@ -307,6 +307,7 @@ class RoleController extends Controller
             'settings.datatables' => ['settings', 'common', 'Common', null, null, 'Datatables'],
             'settings.email_rules' => ['settings', 'common', 'Common', null, null, 'Email Rules'],
             'settings.phone_number' => ['settings', 'common', 'Common', null, null, 'Phone Number'],
+            'settings.permalink' => ['settings', 'common', 'Common', null, null, 'Permalink'],
             'settings.optimize' => ['settings', 'common', 'Common', null, null, 'Optimize'],
             'settings.website_tracking' => ['settings', 'common', 'Common', null, null, 'Website Tracking'],
             'settings.analytics' => ['settings', 'others', 'Others', null, null, 'Analytics'],

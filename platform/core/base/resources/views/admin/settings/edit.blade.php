@@ -23,7 +23,7 @@
                                             @include('core/base::admin.partials.icon', ['name' => $item['icon']])
                                         </span>
                                         <span class="d-block">
-                                            <span class="d-block h3 text-primary mb-1">{{ $item['title'] }}</span>
+                                            <span class="d-block fs-4 text-primary fw-bold mb-1">{{ $item['title'] }}</span>
                                             <span class="d-block text-secondary">{{ $item['description'] }}</span>
                                         </span>
                                     </div>

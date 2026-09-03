@@ -135,6 +135,51 @@ Route::prefix('admin')
             Route::get('settings', [SettingController::class, 'edit'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.edit');
+            Route::get('settings/general', [SettingController::class, 'general'])
+                ->middleware('permission:settings.edit')
+                ->name('settings.general');
+            Route::get('settings/email', [SettingController::class, 'email'])
+                ->middleware('permission:settings.email')
+                ->name('settings.email');
+            Route::put('settings/email', [SettingController::class, 'updateEmail'])
+                ->middleware('permission:settings.email')
+                ->name('settings.email.update');
+            Route::post('settings/email/test', [SettingController::class, 'sendTestEmail'])
+                ->middleware('permission:settings.email')
+                ->name('settings.email.test');
+            Route::get('settings/email/templates', [SettingController::class, 'emailTemplates'])
+                ->middleware('permission:settings.email')
+                ->name('settings.email.templates');
+            Route::put('settings/email/templates', [SettingController::class, 'updateEmailTemplates'])
+                ->middleware('permission:settings.email')
+                ->name('settings.email.templates.update');
+            Route::get('settings/email/rules', [SettingController::class, 'emailRules'])
+                ->middleware('permission:settings.email_rules')
+                ->name('settings.email.rules');
+            Route::put('settings/email/rules', [SettingController::class, 'updateEmailRules'])
+                ->middleware('permission:settings.email_rules')
+                ->name('settings.email.rules.update');
+            Route::get('settings/phone-number', [SettingController::class, 'phoneNumber'])
+                ->middleware('permission:settings.phone_number')
+                ->name('settings.phone-number');
+            Route::put('settings/phone-number', [SettingController::class, 'updatePhoneNumber'])
+                ->middleware('permission:settings.phone_number')
+                ->name('settings.phone-number.update');
+            Route::get('settings/media', [SettingController::class, 'media'])
+                ->middleware('permission:settings.media')
+                ->name('settings.media');
+            Route::put('settings/media', [SettingController::class, 'updateMedia'])
+                ->middleware('permission:settings.media')
+                ->name('settings.media.update');
+            Route::post('settings/media/generate-thumbnails', [SettingController::class, 'generateMediaThumbnails'])
+                ->middleware('permission:settings.media')
+                ->name('settings.media.generate-thumbnails');
+            Route::get('settings/permalink', [SettingController::class, 'permalink'])
+                ->middleware('permission:settings.permalink')
+                ->name('settings.permalink');
+            Route::put('settings/permalink', [SettingController::class, 'updatePermalink'])
+                ->middleware('permission:settings.permalink')
+                ->name('settings.permalink.update');
             Route::put('settings', [SettingController::class, 'update'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.update');
@@ -147,6 +192,12 @@ Route::prefix('admin')
             Route::post('settings/languages', [LanguageController::class, 'store'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.languages.store');
+            Route::put('settings/languages/settings', [LanguageController::class, 'updateSettings'])
+                ->middleware('permission:settings.edit')
+                ->name('settings.languages.settings.update');
+            Route::put('settings/languages/{language}', [LanguageController::class, 'update'])
+                ->middleware('permission:settings.edit')
+                ->name('settings.languages.update');
             Route::post('settings/languages/{language}/delete', [LanguageController::class, 'destroy'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.languages.destroy');

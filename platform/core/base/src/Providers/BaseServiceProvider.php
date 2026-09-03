@@ -432,6 +432,12 @@ class BaseServiceProvider extends ServiceProvider
                 'description' => 'Edit phone number settings.',
             ],
             [
+                'key' => 'settings.permalink',
+                'name' => 'Edit permalink settings',
+                'group' => 'settings common',
+                'description' => 'Edit permalink settings.',
+            ],
+            [
                 'key' => 'settings.optimize',
                 'name' => 'Edit optimization settings',
                 'group' => 'settings common',

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['code', 'name', 'is_default', 'is_active'])]
+#[Fillable(['code', 'name', 'locale', 'flag', 'text_direction', 'order', 'is_default', 'is_active'])]
 class Language extends Model
 {
     /**

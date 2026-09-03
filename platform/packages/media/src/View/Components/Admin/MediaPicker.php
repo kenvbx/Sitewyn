@@ -12,6 +12,8 @@ class MediaPicker extends Component
 
     public string $modalId;
 
+    public string $rootId;
+
     public string $urlFieldId;
 
     public string $previewId;
@@ -24,10 +26,13 @@ class MediaPicker extends Component
         public ?string $urlValue = null,
         public string $buttonLabel = 'Choose media',
         public string $modalTitle = 'Select media',
+        public bool $inline = true,
         public bool $required = false,
+        public ?string $formId = null,
     ) {
         $baseId = Str::slug(str_replace(['[', ']'], ['-', ''], $this->name)) ?: 'media';
 
+        $this->rootId = $baseId.'-media-picker';
         $this->fieldId = $baseId;
         $this->modalId = $baseId.'-media-picker-modal';
         $this->urlFieldId = $baseId.'-url';

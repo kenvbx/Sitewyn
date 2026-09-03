@@ -4,53 +4,58 @@
 @endphp
 
 <div
+  id="{{ $rootId }}"
   class="mb-3"
   data-media-picker
   data-media-picker-endpoint="{{ route('admin.media.picker', [], false) }}"
   data-media-picker-modal="#{{ $modalId }}"
 >
-  @if ($label)
-    <label class="form-label {{ $required ? 'required' : '' }}" for="{{ $fieldId }}">{{ $label }}</label>
+  @if ($inline)
+    @if ($label)
+      <label class="form-label {{ $required ? 'required' : '' }}" for="{{ $fieldId }}">{{ $label }}</label>
+    @endif
   @endif
 
-  <input type="hidden" id="{{ $fieldId }}" name="{{ $name }}" value="{{ $currentValue }}" @required($required) data-media-picker-id-input>
-  <input type="hidden" id="{{ $urlFieldId }}" name="{{ $urlName }}" value="{{ $currentUrl }}" data-media-picker-url-input>
+  <input type="hidden" id="{{ $fieldId }}" name="{{ $name }}" value="{{ $currentValue }}" @required($required) @if ($formId) form="{{ $formId }}" @endif data-media-picker-id-input>
+  <input type="hidden" id="{{ $urlFieldId }}" name="{{ $urlName }}" value="{{ $currentUrl }}" @if ($formId) form="{{ $formId }}" @endif data-media-picker-url-input>
 
-  <div class="row g-2 align-items-center">
-    <div class="col">
-      <div class="form-control d-flex align-items-center gap-3" id="{{ $previewId }}" data-media-picker-preview>
-        @if ($currentUrl)
-          <span class="avatar avatar-md rounded" style="background-image: url({{ $currentUrl }})"></span>
-          <span class="text-truncate">{{ $currentUrl }}</span>
-        @else
-          <span class="avatar avatar-md bg-secondary-lt text-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-photo" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  @if ($inline)
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <div class="form-control d-flex align-items-center gap-3" id="{{ $previewId }}" data-media-picker-preview>
+          @if ($currentUrl)
+            <span class="avatar avatar-md rounded" style="background-image: url({{ $currentUrl }})"></span>
+            <span class="text-truncate">{{ $currentUrl }}</span>
+          @else
+            <span class="avatar avatar-md bg-secondary-lt text-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-photo" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M15 8h.01" />
+                <path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z" />
+                <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
+                <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" />
+              </svg>
+            </span>
+            <span class="text-secondary">No media selected</span>
+          @endif
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="btn-list">
+          <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#{{ $modalId }}" data-media-picker-open>
+            {{ $buttonLabel }}
+          </button>
+          <button type="button" class="btn btn-icon" aria-label="Clear selected media" data-media-picker-clear>
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M15 8h.01" />
-              <path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z" />
-              <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
-              <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" />
+              <path d="M18 6l-12 12" />
+              <path d="M6 6l12 12" />
             </svg>
-          </span>
-          <span class="text-secondary">No media selected</span>
-        @endif
+          </button>
+        </div>
       </div>
     </div>
-    <div class="col-auto">
-      <div class="btn-list">
-        <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#{{ $modalId }}" data-media-picker-open>
-          {{ $buttonLabel }}
-        </button>
-        <button type="button" class="btn btn-icon" aria-label="Clear selected media" data-media-picker-clear>
-          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M18 6l-12 12" />
-            <path d="M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
+  @endif
 
   <x-admin-modal id="{{ $modalId }}" title="{{ $modalTitle }}" size="lg" scrollable>
     <form class="mb-3" data-media-picker-search>
@@ -210,7 +215,10 @@
 
             idInput.value = selectedFile.id
             urlInput.value = selectedFile.url
-            preview.innerHTML = '<span class="avatar avatar-md rounded" style="background-image: url(' + escapeHtml(selectedFile.thumbnail || selectedFile.url) + ')"></span><span class="text-truncate">' + escapeHtml(selectedFile.name) + '</span>'
+            if (preview) {
+              preview.innerHTML = '<span class="avatar avatar-md rounded" style="background-image: url(' + escapeHtml(selectedFile.thumbnail || selectedFile.url) + ')"></span><span class="text-truncate">' + escapeHtml(selectedFile.name) + '</span>'
+            }
+            root.dispatchEvent(new CustomEvent('admin:media-picker-selected', { bubbles: true, detail: selectedFile }))
             window.tabler.bootstrap.Modal.getOrCreateInstance(modal).hide()
           })
 
@@ -219,7 +227,10 @@
             idInput.value = ''
             urlInput.value = ''
             useButton.setAttribute('disabled', 'disabled')
-            preview.innerHTML = '<span class="avatar avatar-md bg-secondary-lt text-secondary">' + icon('file') + '</span><span class="text-secondary">No media selected</span>'
+            if (preview) {
+              preview.innerHTML = '<span class="avatar avatar-md bg-secondary-lt text-secondary">' + icon('file') + '</span><span class="text-secondary">No media selected</span>'
+            }
+            root.dispatchEvent(new CustomEvent('admin:media-picker-cleared', { bubbles: true }))
           })
 
           modal.addEventListener('shown.bs.modal', function () {
