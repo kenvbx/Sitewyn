@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Sitewyn\Core\Base\Models\Language;
+use Sitewyn\Core\Base\Support\LanguageCatalog;
 use Sitewyn\Packages\Page\Models\Page;
 use Sitewyn\Packages\Page\Models\PageTranslation;
 use Tests\TestCase;
@@ -85,6 +86,15 @@ class AdminLanguagesTest extends TestCase
             ->assertSee('Is default?')
             ->assertSee('Actions')
             ->assertSee('Add new language')
+            ->assertSee('Japanese')
+            ->assertSee('Chinese - 中文')
+            ->assertSee('data-admin-select2', false)
+            ->assertSee('vendor/core-base/libraries/select2/css/select2.min.css', false)
+            ->assertSee('vendor/core-base/libraries/select2/js/select2.full.min.js', false)
+            ->assertSee('id="language-preset" class="form-select sitewyn-select2"', false)
+            ->assertSee('id="language-locale" class="form-select sitewyn-select2"', false)
+            ->assertSee('id="language-code" class="form-select sitewyn-select2"', false)
+            ->assertSee('id="language-flag" class="form-select sitewyn-select2"', false)
             ->assertSee('name="code"', false)
             ->assertSee('name="locale"', false)
             ->assertSee('name="text_direction"', false)
@@ -133,6 +143,46 @@ class AdminLanguagesTest extends TestCase
             'order' => 5,
             'is_default' => false,
             'is_active' => true,
+        ]);
+    }
+
+    public function test_language_catalog_combines_intl_languages_with_cms_defaults(): void
+    {
+        $catalog = app(LanguageCatalog::class);
+
+        $this->assertArrayHasKey('ja', $catalog->languageOptions());
+        $this->assertArrayHasKey('zh_CN', $catalog->localeOptions());
+        $this->assertArrayHasKey('jp', $catalog->flagOptions());
+        $this->assertSame([
+            'locale' => 'vi',
+            'flag' => 'vn',
+            'text_direction' => 'ltr',
+        ], $catalog->defaultsFor('vi'));
+        $this->assertSame([
+            'locale' => 'ar',
+            'flag' => 'sa',
+            'text_direction' => 'rtl',
+        ], $catalog->defaultsFor('ar'));
+    }
+
+    public function test_super_admin_can_add_a_language_from_the_intl_catalog(): void
+    {
+        $admin = $this->superAdmin();
+
+        $this->actingAs($admin, 'admin')
+            ->post('/admin/settings/languages', [
+                'code' => 'ja',
+                'name' => '日本語',
+            ])
+            ->assertRedirect('/admin/settings/languages')
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('languages', [
+            'code' => 'ja',
+            'name' => '日本語',
+            'locale' => 'ja',
+            'flag' => 'jp',
+            'text_direction' => 'ltr',
         ]);
     }
 

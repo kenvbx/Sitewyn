@@ -9,6 +9,7 @@ use Sitewyn\Core\Base\Http\Controllers\Admin\CleanupController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\CronjobController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\DashboardController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\LanguageController;
+use Sitewyn\Core\Base\Http\Controllers\Admin\LocaleController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\MenuController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PasswordResetController;
 use Sitewyn\Core\Base\Http\Controllers\Admin\PermissionController;
@@ -180,6 +181,57 @@ Route::prefix('admin')
             Route::put('settings/permalink', [SettingController::class, 'updatePermalink'])
                 ->middleware('permission:settings.permalink')
                 ->name('settings.permalink.update');
+            Route::get('settings/admin-appearance', [SettingController::class, 'adminAppearance'])
+                ->middleware('permission:settings.admin_appearance')
+                ->name('settings.admin-appearance');
+            Route::get('settings/admin-appearance/google-fonts', [SettingController::class, 'googleFonts'])
+                ->middleware('permission:settings.admin_appearance')
+                ->name('settings.admin-appearance.google-fonts');
+            Route::put('settings/admin-appearance', [SettingController::class, 'updateAdminAppearance'])
+                ->middleware('permission:settings.admin_appearance')
+                ->name('settings.admin-appearance.update');
+            Route::get('settings/api', [SettingController::class, 'api'])
+                ->middleware('permission:settings.api')
+                ->name('settings.api');
+            Route::put('settings/api', [SettingController::class, 'updateApi'])
+                ->middleware('permission:settings.api')
+                ->name('settings.api.update');
+            Route::get('settings/cache', [SettingController::class, 'cache'])
+                ->middleware('permission:settings.cache')
+                ->name('settings.cache');
+            Route::put('settings/cache', [SettingController::class, 'updateCache'])
+                ->middleware('permission:settings.cache')
+                ->name('settings.cache.update');
+            Route::get('settings/datatables', [SettingController::class, 'datatables'])
+                ->middleware('permission:settings.datatables')
+                ->name('settings.datatables');
+            Route::put('settings/datatables', [SettingController::class, 'updateDatatables'])
+                ->middleware('permission:settings.datatables')
+                ->name('settings.datatables.update');
+            Route::get('settings/website-tracking', [SettingController::class, 'websiteTracking'])
+                ->middleware('permission:settings.website_tracking')
+                ->name('settings.website-tracking');
+            Route::put('settings/website-tracking', [SettingController::class, 'updateWebsiteTracking'])
+                ->middleware('permission:settings.website_tracking')
+                ->name('settings.website-tracking.update');
+            Route::get('settings/optimize', [SettingController::class, 'optimize'])
+                ->middleware('permission:settings.optimize')
+                ->name('settings.optimize');
+            Route::put('settings/optimize', [SettingController::class, 'updateOptimize'])
+                ->middleware('permission:settings.optimize')
+                ->name('settings.optimize.update');
+            Route::get('settings/blog', [SettingController::class, 'blog'])
+                ->middleware('permission:settings.blog')
+                ->name('settings.blog');
+            Route::put('settings/blog', [SettingController::class, 'updateBlog'])
+                ->middleware('permission:settings.blog')
+                ->name('settings.blog.update');
+            Route::get('settings/members', [SettingController::class, 'members'])
+                ->middleware('permission:settings.member')
+                ->name('settings.members');
+            Route::put('settings/members', [SettingController::class, 'updateMembers'])
+                ->middleware('permission:settings.member')
+                ->name('settings.members.update');
             Route::put('settings', [SettingController::class, 'update'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.update');
@@ -204,6 +256,19 @@ Route::prefix('admin')
             Route::post('settings/languages/{language}/make-default', [LanguageController::class, 'makeDefault'])
                 ->middleware('permission:settings.edit')
                 ->name('settings.languages.make-default');
+
+            Route::get('translations/locales', [LocaleController::class, 'index'])
+                ->middleware('permission:settings.localization.locales')
+                ->name('translations.locales.index');
+            Route::post('translations/locales', [LocaleController::class, 'store'])
+                ->middleware('permission:settings.localization.locales')
+                ->name('translations.locales.store');
+            Route::get('translations/locales/{language}/download', [LocaleController::class, 'download'])
+                ->middleware('permission:settings.localization.locales')
+                ->name('translations.locales.download');
+            Route::post('translations/locales/{language}/delete', [LocaleController::class, 'destroy'])
+                ->middleware('permission:settings.localization.locales')
+                ->name('translations.locales.destroy');
 
             Route::get('plugins', [PluginManageController::class, 'index'])
                 ->middleware('permission:plugins.manage')

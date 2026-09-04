@@ -63,8 +63,11 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('settings.email'));
         $this->assertTrue($registry->has('settings.media'));
         $this->assertTrue($registry->has('settings.permalink'));
+        $this->assertTrue($registry->has('settings.api'));
         $this->assertTrue($registry->has('settings.phone_number'));
         $this->assertTrue($registry->has('settings.website_tracking'));
+        $this->assertTrue($registry->has('settings.blog'));
+        $this->assertTrue($registry->has('settings.member'));
         $this->assertTrue($registry->has('settings.localization.theme_translations'));
         $this->assertTrue($registry->has('api.sanctum_tokens.create'));
         $this->assertTrue($registry->has('cronjobs.manage'));
@@ -79,7 +82,7 @@ class PermissionRegistryTest extends TestCase
         $this->assertTrue($registry->has('request_logs.index'));
         $this->assertTrue($registry->has('request_logs.delete'));
         $this->assertTrue($registry->has('tools.import_other_translations'));
-        $this->assertSame(124, $registry->all()->count());
+        $this->assertSame(125, $registry->all()->count());
         $this->assertContains('settings common', $registry->grouped()->keys());
         $this->assertContains('import export data', $registry->grouped()->keys());
     }

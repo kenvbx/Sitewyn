@@ -17,9 +17,11 @@ use Sitewyn\Core\Base\Console\Commands\PluginListCommand;
 use Sitewyn\Core\Base\Console\Commands\SyncPermissionsCommand;
 use Sitewyn\Core\Base\Http\Middleware\CheckPermission;
 use Sitewyn\Core\Base\Support\AdminFlash;
+use Sitewyn\Core\Base\Support\AdminFontCatalog;
 use Sitewyn\Core\Base\Support\AdminMenuRegistry;
 use Sitewyn\Core\Base\Support\AuditLogger;
 use Sitewyn\Core\Base\Support\BackupService;
+use Sitewyn\Core\Base\Support\LanguageCatalog;
 use Sitewyn\Core\Base\Support\ModuleProviderRepository;
 use Sitewyn\Core\Base\Support\PermissionRegistry;
 use Sitewyn\Core\Base\Support\PluginActivator;
@@ -43,10 +45,13 @@ class BaseServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom($this->modulePath('config/sitewyn-base.php'), 'sitewyn-base');
+        $this->mergeConfigFrom($this->modulePath('config/sitewyn-languages.php'), 'sitewyn-languages');
         $this->app->singleton(AdminFlash::class);
+        $this->app->singleton(AdminFontCatalog::class);
         $this->app->singleton(AdminMenuRegistry::class);
         $this->app->singleton(AuditLogger::class);
         $this->app->singleton(BackupService::class);
+        $this->app->singleton(LanguageCatalog::class);
         $this->app->singleton(PermissionRegistry::class);
         $this->app->singleton(PluginActivator::class);
         $this->app->singleton(PluginManager::class);
@@ -406,6 +411,12 @@ class BaseServiceProvider extends ServiceProvider
                 'name' => 'Edit admin appearance',
                 'group' => 'settings common',
                 'description' => 'Edit admin appearance settings.',
+            ],
+            [
+                'key' => 'settings.api',
+                'name' => 'Edit API settings',
+                'group' => 'settings common',
+                'description' => 'Edit API access and security settings.',
             ],
             [
                 'key' => 'settings.cache',

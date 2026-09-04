@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Sitewyn\Core\Base\Support\SettingStore;
 use Sitewyn\Packages\Blog\Models\Post;
 use Sitewyn\Packages\Blog\Models\Tag;
 use Sitewyn\Packages\Page\Models\Page;
@@ -79,5 +80,68 @@ class PostFrontendTest extends TestCase
             ->assertSee('<meta name="description" content="Post description for search engines." />', false)
             ->assertSee('<meta property="og:title" content="Hello world on Sitewyn" />', false)
             ->assertSee('<meta property="og:image" content="/storage/hello-card.jpg" />', false);
+    }
+
+    public function test_post_renders_configured_schema_markup(): void
+    {
+        app(SettingStore::class)->setMany([
+            'blog_schema_enabled' => '1',
+            'blog_schema_type' => 'NewsArticle',
+        ]);
+
+        Post::query()->create([
+            'title' => 'Structured post',
+            'slug' => 'structured-post',
+            'content' => '<p>Post body copy</p>',
+            'status' => Post::STATUS_PUBLISHED,
+            'seo_description' => 'Structured data description.',
+            'featured_image' => '/storage/structured.jpg',
+        ]);
+
+        $this->get('/blog/structured-post')
+            ->assertOk()
+            ->assertSee('<script type="application/ld+json">', false)
+            ->assertSee('"@type":"NewsArticle"', false)
+            ->assertSee('"headline":"Structured post"', false)
+            ->assertSee('"description":"Structured data description."', false)
+            ->assertSee('"image":"/storage/structured.jpg"', false);
+    }
+
+    public function test_post_schema_markup_can_be_disabled(): void
+    {
+        app(SettingStore::class)->setMany([
+            'blog_schema_enabled' => '0',
+        ]);
+
+        Post::query()->create([
+            'title' => 'No schema',
+            'slug' => 'no-schema',
+            'content' => '<p>Post body copy</p>',
+            'status' => Post::STATUS_PUBLISHED,
+        ]);
+
+        $this->get('/blog/no-schema')
+            ->assertOk()
+            ->assertDontSee('application/ld+json', false);
+    }
+
+    public function test_post_heading_anchor_links_can_be_enabled(): void
+    {
+        app(SettingStore::class)->setMany([
+            'blog_anchor_links_enabled' => '1',
+        ]);
+
+        Post::query()->create([
+            'title' => 'Anchored post',
+            'slug' => 'anchored-post',
+            'content' => '<h2>Pricing</h2><h3 id="custom-id">FAQ</h3><pre><h2>Code heading</h2></pre>',
+            'status' => Post::STATUS_PUBLISHED,
+        ]);
+
+        $this->get('/blog/anchored-post')
+            ->assertOk()
+            ->assertSee('<h2 id="pricing">Pricing</h2>', false)
+            ->assertSee('<h3 id="custom-id">FAQ</h3>', false)
+            ->assertSee('<pre><h2>Code heading</h2></pre>', false);
     }
 }

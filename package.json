@@ -13,7 +13,9 @@
         "dev": "vite"
     },
     "dependencies": {
-        "@tabler/core": "^1.4.0"
+        "@tabler/core": "^1.4.0",
+        "jquery": "^3.7.1",
+        "select2": "^4.0.13"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -24,8 +26,5 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
-    },
-    "dependencies": {
-        "@tabler/core": "^1.4.0"
     }
 }

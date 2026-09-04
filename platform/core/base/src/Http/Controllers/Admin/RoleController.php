@@ -303,6 +303,7 @@ class RoleController extends Controller
             'settings.email' => ['settings', 'common', 'Common', null, null, 'Email'],
             'settings.media' => ['settings', 'common', 'Common', null, null, 'Media'],
             'settings.admin_appearance' => ['settings', 'common', 'Common', null, null, 'Admin Appearance'],
+            'settings.api' => ['settings', 'api', 'API', null, null, 'API Settings'],
             'settings.cache' => ['system', 'cache', 'Cache Management', null, null, 'Cache Management'],
             'settings.datatables' => ['settings', 'common', 'Common', null, null, 'Datatables'],
             'settings.email_rules' => ['settings', 'common', 'Common', null, null, 'Email Rules'],

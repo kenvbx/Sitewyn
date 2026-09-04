@@ -9,6 +9,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Sitewyn\Core\Base\Models\Language;
+use Sitewyn\Core\Base\Support\LanguageCatalog;
 use Sitewyn\Core\Base\Support\SettingStore;
 
 /**
@@ -18,7 +19,10 @@ use Sitewyn\Core\Base\Support\SettingStore;
  */
 class LanguageController extends Controller
 {
-    public function __construct(private readonly SettingStore $settings) {}
+    public function __construct(
+        private readonly SettingStore $settings,
+        private readonly LanguageCatalog $languages,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -33,9 +37,10 @@ class LanguageController extends Controller
                 ->orderBy('name')
                 ->get(),
             'editingLanguage' => $editingLanguage,
-            'languageOptions' => $this->languageOptions(),
-            'localeOptions' => $this->localeOptions(),
-            'flagOptions' => $this->flagOptions(),
+            'languagePresets' => $this->languages->languages(),
+            'languageOptions' => $this->languages->languageOptions(),
+            'localeOptions' => $this->languages->localeOptions(),
+            'flagOptions' => $this->languages->flagOptions(),
             'settings' => $this->languageSettings(),
             'activeTab' => $request->query('tab') === 'settings' ? 'settings' : 'detail',
         ]);
@@ -45,14 +50,14 @@ class LanguageController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'locale' => ['nullable', 'string', Rule::in(array_keys($this->localeOptions()))],
-            'code' => ['required', 'string', Rule::in(array_keys($this->languageOptions())), Rule::unique('languages', 'code')],
+            'locale' => ['nullable', 'string', Rule::in(array_keys($this->languages->localeOptions()))],
+            'code' => ['required', 'string', Rule::in(array_keys($this->languages->languageOptions())), Rule::unique('languages', 'code')],
             'text_direction' => ['nullable', 'string', Rule::in(['ltr', 'rtl'])],
-            'flag' => ['nullable', 'string', Rule::in(array_keys($this->flagOptions()))],
+            'flag' => ['nullable', 'string', Rule::in(array_keys($this->languages->flagOptions()))],
             'order' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        $defaults = $this->defaultsForCode($validated['code']);
+        $defaults = $this->languages->defaultsFor($validated['code']);
 
         Language::query()->create([
             'code' => $validated['code'],
@@ -74,14 +79,14 @@ class LanguageController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'locale' => ['nullable', 'string', Rule::in(array_keys($this->localeOptions()))],
-            'code' => ['required', 'string', Rule::in(array_keys($this->languageOptions())), Rule::unique('languages', 'code')->ignore($language->id)],
+            'locale' => ['nullable', 'string', Rule::in(array_keys($this->languages->localeOptions()))],
+            'code' => ['required', 'string', Rule::in(array_keys($this->languages->languageOptions())), Rule::unique('languages', 'code')->ignore($language->id)],
             'text_direction' => ['nullable', 'string', Rule::in(['ltr', 'rtl'])],
-            'flag' => ['nullable', 'string', Rule::in(array_keys($this->flagOptions()))],
+            'flag' => ['nullable', 'string', Rule::in(array_keys($this->languages->flagOptions()))],
             'order' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        $defaults = $this->defaultsForCode($validated['code']);
+        $defaults = $this->languages->defaultsFor($validated['code']);
 
         $language->update([
             'code' => $validated['code'],
@@ -159,51 +164,6 @@ class LanguageController extends Controller
     }
 
     /**
-     * @return array<string, string>
-     */
-    private function languageOptions(): array
-    {
-        return [
-            'en' => 'English',
-            'ar' => 'Arabic',
-            'vi' => 'Tiếng Việt',
-            'fr' => 'Français',
-            'id' => 'Bahasa Indonesia',
-            'tr' => 'Türkçe',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function localeOptions(): array
-    {
-        return [
-            'en_US' => 'en_US',
-            'ar' => 'ar',
-            'vi' => 'vi',
-            'fr' => 'fr',
-            'id' => 'id',
-            'tr' => 'tr',
-        ];
-    }
-
-    /**
-     * @return array<string, array{name: string, emoji: string}>
-     */
-    private function flagOptions(): array
-    {
-        return [
-            'us' => ['name' => 'United States', 'emoji' => '🇺🇸'],
-            'sa' => ['name' => 'Saudi Arabia', 'emoji' => '🇸🇦'],
-            'vn' => ['name' => 'Vietnam', 'emoji' => '🇻🇳'],
-            'fr' => ['name' => 'France', 'emoji' => '🇫🇷'],
-            'id' => ['name' => 'Indonesia', 'emoji' => '🇮🇩'],
-            'tr' => ['name' => 'Turkey', 'emoji' => '🇹🇷'],
-        ];
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function languageSettings(): array
@@ -218,22 +178,6 @@ class LanguageController extends Controller
             'language_hidden_codes' => is_array($decodedHiddenCodes) ? $decodedHiddenCodes : [],
             'language_auto_detect' => $this->settings->get('language_auto_detect', '0') === '1',
         ];
-    }
-
-    /**
-     * @return array{locale: string, flag: string, text_direction: string}
-     */
-    private function defaultsForCode(string $code): array
-    {
-        return match ($code) {
-            'en' => ['locale' => 'en_US', 'flag' => 'us', 'text_direction' => 'ltr'],
-            'ar' => ['locale' => 'ar', 'flag' => 'sa', 'text_direction' => 'rtl'],
-            'vi' => ['locale' => 'vi', 'flag' => 'vn', 'text_direction' => 'ltr'],
-            'fr' => ['locale' => 'fr', 'flag' => 'fr', 'text_direction' => 'ltr'],
-            'id' => ['locale' => 'id', 'flag' => 'id', 'text_direction' => 'ltr'],
-            'tr' => ['locale' => 'tr', 'flag' => 'tr', 'text_direction' => 'ltr'],
-            default => ['locale' => $code, 'flag' => 'us', 'text_direction' => 'ltr'],
-        };
     }
 
     private function nextOrder(): int

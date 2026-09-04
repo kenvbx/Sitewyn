@@ -8,6 +8,65 @@
   <li class="breadcrumb-item active" aria-current="page">Languages</li>
 @endsection
 
+@push('styles')
+  <link href="{{ asset('vendor/core-base/libraries/select2/css/select2.min.css') }}" rel="stylesheet" />
+  <style>
+    .sitewyn-select2 + .select2-container .select2-selection--single {
+      min-height: 36px;
+      border-color: var(--tblr-border-color);
+      border-radius: var(--tblr-border-radius);
+      background-color: var(--tblr-bg-forms);
+    }
+
+    .sitewyn-select2 + .select2-container .select2-selection--single .select2-selection__rendered {
+      padding-left: .75rem;
+      padding-right: 2rem;
+      color: var(--tblr-body-color);
+      line-height: 34px;
+    }
+
+    .sitewyn-select2 + .select2-container .select2-selection--single .select2-selection__arrow {
+      height: 34px;
+      right: .5rem;
+    }
+
+    .sitewyn-select2 + .select2-container.select2-container--focus .select2-selection--single,
+    .sitewyn-select2 + .select2-container.select2-container--open .select2-selection--single {
+      border-color: var(--tblr-primary);
+      box-shadow: 0 0 0 .25rem rgba(var(--tblr-primary-rgb), .25);
+    }
+
+    .select2-dropdown.sitewyn-language-select2-dropdown {
+      border-color: var(--tblr-border-color);
+      border-radius: var(--tblr-border-radius);
+      background: var(--tblr-bg-surface);
+      color: var(--tblr-body-color);
+    }
+
+    .sitewyn-language-select2-dropdown .select2-search--dropdown {
+      padding: .5rem;
+    }
+
+    .sitewyn-language-select2-dropdown .select2-search--dropdown .select2-search__field {
+      min-height: 36px;
+      border-color: var(--tblr-border-color);
+      border-radius: var(--tblr-border-radius);
+      background: var(--tblr-bg-forms);
+      color: var(--tblr-body-color);
+      outline: 0;
+    }
+
+    .sitewyn-language-select2-dropdown .select2-results__option {
+      padding: .5rem .75rem;
+    }
+
+    .sitewyn-language-select2-dropdown .select2-results__option--highlighted[aria-selected] {
+      background-color: var(--tblr-primary);
+      color: #fff;
+    }
+  </style>
+@endpush
+
 @section('content')
   @if (session('status'))
     <div class="alert alert-success" role="alert">{{ session('status') }}</div>
@@ -45,15 +104,16 @@
 
                 <div class="mb-3">
                   <label class="form-label" for="language-preset">Choose a language</label>
-                  <select id="language-preset" class="form-select" data-language-preset>
+                  <select id="language-preset" class="form-select sitewyn-select2" data-language-preset data-admin-select2 data-placeholder="Select language">
                     <option value="">Select language</option>
-                    @foreach ($languageOptions as $code => $name)
+                    @foreach ($languagePresets as $code => $preset)
                       <option
                         value="{{ $code }}"
-                        data-name="{{ $name }}"
-                        data-locale="{{ $localeOptions[$code === 'en' ? 'en_US' : $code] ?? $code }}"
-                        data-flag="{{ ['en' => 'us', 'ar' => 'sa', 'vi' => 'vn', 'fr' => 'fr', 'id' => 'id', 'tr' => 'tr'][$code] ?? $code }}"
-                      >{{ $name }}</option>
+                        data-name="{{ $preset['native_name'] }}"
+                        data-locale="{{ $preset['locale'] }}"
+                        data-flag="{{ $preset['flag'] }}"
+                        data-direction="{{ $preset['text_direction'] }}"
+                      >{{ $preset['name'] }}@if ($preset['native_name'] !== $preset['name']) - {{ $preset['native_name'] }}@endif</option>
                     @endforeach
                   </select>
                   <div class="form-hint">You can choose a language in the list or directly edit it below.</div>
@@ -67,7 +127,7 @@
 
                 <div class="mb-3">
                   <label class="form-label" for="language-locale">Locale</label>
-                  <select name="locale" id="language-locale" class="form-select" required data-language-locale>
+                  <select name="locale" id="language-locale" class="form-select sitewyn-select2" required data-language-locale data-admin-select2 data-placeholder="Select locale">
                     <option value="">Select locale</option>
                     @foreach ($localeOptions as $value => $label)
                       <option value="{{ $value }}" @selected(old('locale', $language?->locale) === $value)>{{ $label }}</option>
@@ -78,7 +138,7 @@
 
                 <div class="mb-3">
                   <label class="form-label" for="language-code">Language code</label>
-                  <select name="code" id="language-code" class="form-select" required data-language-code>
+                  <select name="code" id="language-code" class="form-select sitewyn-select2" required data-language-code data-admin-select2 data-placeholder="Select language code">
                     <option value="">Select language code</option>
                     @foreach ($languageOptions as $code => $name)
                       <option value="{{ $code }}" @selected(old('code', $language?->code) === $code)>{{ $code }}</option>
@@ -104,7 +164,7 @@
 
                 <div class="mb-3">
                   <label class="form-label" for="language-flag">Flag</label>
-                  <select name="flag" id="language-flag" class="form-select" required data-language-flag>
+                  <select name="flag" id="language-flag" class="form-select sitewyn-select2" required data-language-flag data-admin-select2 data-placeholder="Select a flag...">
                     <option value="">Select a flag...</option>
                     @foreach ($flagOptions as $code => $flag)
                       <option value="{{ $code }}" @selected(old('flag', $language?->flag) === $code)>{{ $flag['emoji'] }} {{ $flag['name'] }}</option>
@@ -297,6 +357,8 @@
 @endsection
 
 @push('scripts')
+  <script src="{{ asset('vendor/core-base/libraries/jquery.min.js') }}"></script>
+  <script src="{{ asset('vendor/core-base/libraries/select2/js/select2.full.min.js') }}"></script>
   <script>
     ;(function () {
       var preset = document.querySelector('[data-language-preset]')
@@ -304,9 +366,33 @@
       var localeSelect = document.querySelector('[data-language-locale]')
       var codeSelect = document.querySelector('[data-language-code]')
       var flagSelect = document.querySelector('[data-language-flag]')
+      var directionInputs = document.querySelectorAll('input[name="text_direction"]')
+      var select2Fields = document.querySelectorAll('[data-admin-select2]')
 
       if (!preset) {
         return
+      }
+
+      var syncSelect2Value = function (field, value) {
+        if (!field) {
+          return
+        }
+
+        field.value = value || ''
+
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+          window.jQuery(field).trigger('change.select2')
+        }
+      }
+
+      if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+        select2Fields.forEach(function (field) {
+          window.jQuery(field).select2({
+            placeholder: field.getAttribute('data-placeholder') || 'Select an option',
+            width: '100%',
+            dropdownCssClass: 'sitewyn-language-select2-dropdown',
+          })
+        })
       }
 
       preset.addEventListener('change', function () {
@@ -317,9 +403,13 @@
         }
 
         if (nameInput) nameInput.value = option.getAttribute('data-name') || ''
-        if (localeSelect) localeSelect.value = option.getAttribute('data-locale') || ''
-        if (codeSelect) codeSelect.value = option.value
-        if (flagSelect) flagSelect.value = option.getAttribute('data-flag') || ''
+        syncSelect2Value(localeSelect, option.getAttribute('data-locale') || '')
+        syncSelect2Value(codeSelect, option.value)
+        syncSelect2Value(flagSelect, option.getAttribute('data-flag') || '')
+
+        directionInputs.forEach(function (input) {
+          input.checked = input.value === (option.getAttribute('data-direction') || 'ltr')
+        })
       })
     })()
   </script>

@@ -195,7 +195,7 @@
                 name: fileButton.getAttribute('data-file-name'),
                 thumbnail: fileButton.getAttribute('data-file-thumbnail'),
               }
-              useButton.removeAttribute('disabled')
+              useButton && useButton.removeAttribute('disabled')
 
               if (editorPickerRequest) {
                 editorPickerRequest.callback(selectedFile.url, { alt: selectedFile.name })
@@ -205,16 +205,21 @@
             }
           })
 
-          search.addEventListener('submit', function (event) {
+          search && search.addEventListener('submit', function (event) {
             event.preventDefault()
             load(currentFolder, search.elements.q.value)
           })
 
-          useButton.addEventListener('click', function () {
+          useButton && useButton.addEventListener('click', function () {
             if (! selectedFile) return
 
-            idInput.value = selectedFile.id
-            urlInput.value = selectedFile.url
+            if (idInput) {
+              idInput.value = selectedFile.id
+            }
+
+            if (urlInput) {
+              urlInput.value = selectedFile.url
+            }
             if (preview) {
               preview.innerHTML = '<span class="avatar avatar-md rounded" style="background-image: url(' + escapeHtml(selectedFile.thumbnail || selectedFile.url) + ')"></span><span class="text-truncate">' + escapeHtml(selectedFile.name) + '</span>'
             }
@@ -222,22 +227,30 @@
             window.tabler.bootstrap.Modal.getOrCreateInstance(modal).hide()
           })
 
-          clearButton.addEventListener('click', function () {
+          clearButton && clearButton.addEventListener('click', function () {
             selectedFile = null
-            idInput.value = ''
-            urlInput.value = ''
-            useButton.setAttribute('disabled', 'disabled')
+            if (idInput) {
+              idInput.value = ''
+            }
+
+            if (urlInput) {
+              urlInput.value = ''
+            }
+
+            if (useButton) {
+              useButton.setAttribute('disabled', 'disabled')
+            }
             if (preview) {
               preview.innerHTML = '<span class="avatar avatar-md bg-secondary-lt text-secondary">' + icon('file') + '</span><span class="text-secondary">No media selected</span>'
             }
             root.dispatchEvent(new CustomEvent('admin:media-picker-cleared', { bubbles: true }))
           })
 
-          modal.addEventListener('shown.bs.modal', function () {
-            load(currentFolder, search.elements.q.value)
+          modal && modal.addEventListener('shown.bs.modal', function () {
+            load(currentFolder, search ? search.elements.q.value : '')
           })
 
-          modal.addEventListener('hidden.bs.modal', function () {
+          modal && modal.addEventListener('hidden.bs.modal', function () {
             editorPickerRequest = null
           })
         }

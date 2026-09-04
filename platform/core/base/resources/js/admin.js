@@ -13,4 +13,8 @@ function initEditors() {
     import('./admin/editor.js').then((module) => module.initEditors());
 }
 
-document.readyState !== 'loading' ? initEditors() : document.addEventListener('DOMContentLoaded', initEditors, { once: true });
+function initAdmin() {
+    initEditors();
+}
+
+document.readyState !== 'loading' ? initAdmin() : document.addEventListener('DOMContentLoaded', initAdmin, { once: true });

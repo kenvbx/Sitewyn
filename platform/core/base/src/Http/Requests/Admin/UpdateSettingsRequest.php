@@ -6,6 +6,8 @@ use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Sitewyn\Core\Base\Models\Language;
+use Sitewyn\Core\Base\Support\AdminFontCatalog;
+use Sitewyn\Core\Base\Support\LanguageCatalog;
 use Sitewyn\Core\Base\Support\ThemeManager;
 
 class UpdateSettingsRequest extends FormRequest
@@ -156,6 +158,87 @@ class UpdateSettingsRequest extends FormRequest
             'permalink_member_prefix' => ['nullable', 'string', 'max:120'],
             'permalink_single_page_postfix' => ['nullable', 'string', 'max:20'],
             'permalink_turn_off_automatic_url_translation_into_latin' => ['nullable', 'boolean'],
+            'admin_logo' => ['nullable', 'string', 'max:255'],
+            'admin_logo_url' => ['nullable', 'string', 'max:2048'],
+            'admin_logo_height' => ['nullable', 'integer', 'between:1,500'],
+            'admin_favicon' => ['nullable', 'string', 'max:255'],
+            'admin_favicon_url' => ['nullable', 'string', 'max:2048'],
+            'admin_favicon_type' => ['nullable', 'string', Rule::in(['ico', 'png', 'svg', 'gif', 'jpeg', 'webp'])],
+            'admin_login_screen_backgrounds' => ['nullable', 'array', 'max:20'],
+            'admin_login_screen_backgrounds.*' => ['nullable', 'string', 'max:255'],
+            'admin_login_screen_background_urls' => ['nullable', 'array', 'max:20'],
+            'admin_login_screen_background_urls.*' => ['nullable', 'string', 'max:2048'],
+            'admin_title' => ['nullable', 'string', 'max:255'],
+            'admin_primary_font' => ['nullable', 'string', Rule::in(app(AdminFontCatalog::class)->keys())],
+            'admin_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_secondary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_heading_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_text_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_link_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_link_hover_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'admin_language' => ['nullable', 'string', Rule::in(array_merge(['default'], $this->adminLanguageCodes()))],
+            'admin_language_direction' => ['nullable', 'string', Rule::in(['ltr', 'rtl'])],
+            'admin_rich_editor' => ['nullable', 'string', Rule::in(['ckeditor', 'tinymce'])],
+            'admin_enable_page_visual_builder' => ['nullable', 'boolean'],
+            'admin_layout' => ['nullable', 'string', Rule::in(['vertical', 'horizontal'])],
+            'admin_container_width' => ['nullable', 'string', Rule::in(['default', 'large', 'full'])],
+            'admin_show_menu_item_icon' => ['nullable', 'boolean'],
+            'admin_show_admin_bar' => ['nullable', 'boolean'],
+            'admin_show_guidelines' => ['nullable', 'boolean'],
+            'admin_show_get_started_wizard' => ['nullable', 'boolean'],
+            'admin_custom_css' => ['nullable', 'string', 'max:20000'],
+            'admin_header_js' => ['nullable', 'string', 'max:20000'],
+            'admin_body_js' => ['nullable', 'string', 'max:20000'],
+            'admin_footer_js' => ['nullable', 'string', 'max:20000'],
+            'api_enabled' => ['nullable', 'boolean'],
+            'api_key' => ['nullable', 'string', 'max:255'],
+            'api_push_notifications_enabled' => ['nullable', 'boolean'],
+            'api_fcm_project_id' => ['nullable', 'string', 'max:255'],
+            'api_fcm_service_account_json' => ['nullable', 'string', 'max:20000'],
+            'cache_admin_menu' => ['nullable', 'boolean'],
+            'cache_front_menu' => ['nullable', 'boolean'],
+            'cache_user_avatar' => ['nullable', 'boolean'],
+            'cache_shortcodes' => ['nullable', 'boolean'],
+            'cache_shortcodes_duration' => ['nullable', 'integer', 'between:0,86400'],
+            'cache_widgets' => ['nullable', 'boolean'],
+            'cache_widgets_duration' => ['nullable', 'integer', 'between:0,86400'],
+            'cache_installed_plugins' => ['nullable', 'boolean'],
+            'cache_size_warning_threshold' => ['nullable', 'integer', 'between:1,10240'],
+            'cache_auto_clear_when_size_exceeds_threshold' => ['nullable', 'boolean'],
+            'cache_sitemap' => ['nullable', 'boolean'],
+            'cache_sitemap_timeout' => ['nullable', 'integer', 'between:1,10080'],
+            'cache_public_headers' => ['nullable', 'boolean'],
+            'cache_public_duration' => ['nullable', 'integer', 'between:0,86400'],
+            'datatables_pagination_type' => ['nullable', 'string', Rule::in(['default', 'dropdown'])],
+            'datatables_show_column_visibility' => ['nullable', 'boolean'],
+            'datatables_show_export_button' => ['nullable', 'boolean'],
+            'datatables_enable_table_responsive' => ['nullable', 'boolean'],
+            'website_tracking_type' => ['nullable', 'string', Rule::in(['gtm', 'ga', 'custom'])],
+            'website_tracking_gtm_container_id' => ['nullable', 'string', 'max:30', 'regex:/^GTM-[A-Z0-9]+$/i'],
+            'website_tracking_gtm_debug_mode' => ['nullable', 'boolean'],
+            'website_tracking_gtm_include_customer_data' => ['nullable', 'boolean'],
+            'website_tracking_ga_measurement_id' => ['nullable', 'string', 'max:30', 'regex:/^G-[A-Z0-9]+$/i'],
+            'website_tracking_custom_header_script' => ['nullable', 'string', 'max:50000'],
+            'website_tracking_custom_body_code' => ['nullable', 'string', 'max:50000'],
+            'optimize_page_speed_enabled' => ['nullable', 'boolean'],
+            'optimize_collapse_whitespace' => ['nullable', 'boolean'],
+            'optimize_elide_attributes' => ['nullable', 'boolean'],
+            'optimize_inline_css' => ['nullable', 'boolean'],
+            'optimize_insert_dns_prefetch' => ['nullable', 'boolean'],
+            'optimize_remove_comments' => ['nullable', 'boolean'],
+            'optimize_remove_quotes' => ['nullable', 'boolean'],
+            'optimize_defer_javascript' => ['nullable', 'boolean'],
+            'blog_schema_enabled' => ['nullable', 'boolean'],
+            'blog_schema_type' => ['nullable', 'string', Rule::in(['Article', 'BlogPosting', 'NewsArticle'])],
+            'blog_anchor_links_enabled' => ['nullable', 'boolean'],
+            'member_allow_login' => ['nullable', 'boolean'],
+            'member_allow_register' => ['nullable', 'boolean'],
+            'member_verify_email' => ['nullable', 'boolean'],
+            'member_verification_expiration' => ['nullable', 'integer', 'between:1,10080'],
+            'member_post_approval' => ['nullable', 'boolean'],
+            'member_default_avatar' => ['nullable', 'string', 'max:255'],
+            'member_default_avatar_url' => ['nullable', 'string', 'max:2048'],
+            'member_show_terms_policy_checkbox' => ['nullable', 'boolean'],
         ];
     }
 
@@ -172,6 +255,14 @@ class UpdateSettingsRequest extends FormRequest
             ->all();
 
         return $codes === [] ? ['en'] : $codes;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function adminLanguageCodes(): array
+    {
+        return array_keys(app(LanguageCatalog::class)->languageOptions());
     }
 
     /**

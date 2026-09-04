@@ -21,6 +21,18 @@
   @if (filled($post->og_image))
     <meta property="og:image" content="{{ $post->og_image }}" />
   @endif
+  @if (site_blog_schema_enabled())
+    <script type="application/ld+json">{!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => site_blog_schema_type(),
+        'headline' => $title,
+        'description' => $seoDescription,
+        'datePublished' => $post->created_at?->toAtomString(),
+        'dateModified' => $post->updated_at?->toAtomString(),
+        'image' => filled($post->og_image) ? $post->og_image : $post->featured_image,
+        'mainEntityOfPage' => url('/blog/'.$post->slug),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+  @endif
 @endpush
 
 @section('content')
@@ -43,7 +55,7 @@
     </p>
     <div class="entry-content">
       {{-- Rich text is authored by admins holding post.create/post.edit and is rendered as stored HTML. --}}
-      {!! $content !!}
+      {!! site_blog_content($content) !!}
     </div>
   </article>
 @endsection

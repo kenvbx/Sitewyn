@@ -4,11 +4,15 @@ namespace Sitewyn\Core\Base\Http\Controllers\Admin;
 
 use DateTimeZone;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Mail;
 use Sitewyn\Core\Base\Http\Requests\Admin\UpdateSettingsRequest;
 use Sitewyn\Core\Base\Models\Language;
+use Sitewyn\Core\Base\Support\AdminFontCatalog;
+use Sitewyn\Core\Base\Support\LanguageCatalog;
 use Sitewyn\Core\Base\Support\RobotsTxt;
 use Sitewyn\Core\Base\Support\SettingStore;
 use Sitewyn\Core\Base\Support\ThemeManager;
@@ -104,6 +108,91 @@ class SettingController extends Controller
             'baseSettings' => $this->generalSettings(),
             'fields' => $this->permalinkFields(),
             'baseUrl' => url('/'),
+        ]);
+    }
+
+    public function adminAppearance(): View
+    {
+        $settings = $this->adminAppearanceSettings();
+        $selectedFont = app(AdminFontCatalog::class)->find($settings['admin_primary_font']);
+
+        return view('core/base::admin.settings.admin-appearance', [
+            'settings' => $settings,
+            'baseSettings' => $this->generalSettings(),
+            'faviconTypeOptions' => $this->adminFaviconTypeOptions(),
+            'selectedFont' => $selectedFont,
+            'languageOptions' => ['default' => 'Default (follow site language)'] + app(LanguageCatalog::class)->languageOptions(),
+        ]);
+    }
+
+    public function googleFonts(Request $request): JsonResponse
+    {
+        return response()->json(app(AdminFontCatalog::class)->search(
+            $request->string('q')->toString(),
+            $request->integer('page', 1),
+        ));
+    }
+
+    public function api(): View
+    {
+        return view('core/base::admin.settings.api', [
+            'settings' => $this->apiSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'apiBaseUrl' => url('/api/v1'),
+            'apiDocsUrl' => url('/docs'),
+        ]);
+    }
+
+    public function cache(): View
+    {
+        return view('core/base::admin.settings.cache', [
+            'settings' => $this->cacheSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'sitemapUrl' => url('/sitemap.xml'),
+        ]);
+    }
+
+    public function datatables(): View
+    {
+        return view('core/base::admin.settings.datatables', [
+            'settings' => $this->datatablesSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'paginationTypeOptions' => $this->datatablesPaginationTypeOptions(),
+        ]);
+    }
+
+    public function websiteTracking(): View
+    {
+        return view('core/base::admin.settings.website-tracking', [
+            'settings' => $this->websiteTrackingSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'trackingTypeOptions' => $this->websiteTrackingTypeOptions(),
+        ]);
+    }
+
+    public function optimize(): View
+    {
+        return view('core/base::admin.settings.optimize', [
+            'settings' => $this->optimizeSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'filters' => $this->optimizeFilters(),
+        ]);
+    }
+
+    public function blog(): View
+    {
+        return view('core/base::admin.settings.blog', [
+            'settings' => $this->blogSettings(),
+            'baseSettings' => $this->generalSettings(),
+            'schemaTypeOptions' => $this->blogSchemaTypeOptions(),
+        ]);
+    }
+
+    public function members(): View
+    {
+        return view('core/base::admin.settings.members', [
+            'settings' => $this->memberSettings(),
+            'baseSettings' => $this->generalSettings(),
         ]);
     }
 
@@ -378,6 +467,196 @@ class SettingController extends Controller
             ->route('admin.settings.permalink');
     }
 
+    public function updateAdminAppearance(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $backgrounds = collect($validated['admin_login_screen_backgrounds'] ?? [])
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->values()
+            ->all();
+        $backgroundUrls = collect($validated['admin_login_screen_background_urls'] ?? [])
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->values()
+            ->all();
+
+        $this->settings->setMany([
+            'admin_logo' => $validated['admin_logo'] ?? null,
+            'admin_logo_url' => $validated['admin_logo_url'] ?? null,
+            'admin_logo_height' => (string) ($validated['admin_logo_height'] ?? 32),
+            'admin_favicon' => $validated['admin_favicon'] ?? null,
+            'admin_favicon_url' => $validated['admin_favicon_url'] ?? null,
+            'admin_favicon_type' => $validated['admin_favicon_type'] ?? 'ico',
+            'admin_login_screen_backgrounds' => json_encode($backgrounds),
+            'admin_login_screen_background_urls' => json_encode($backgroundUrls),
+            'admin_title' => $validated['admin_title'] ?? config('app.name', 'Sitewyn').' Admin',
+            'admin_primary_font' => $validated['admin_primary_font'] ?? 'inter',
+            'admin_primary_color' => $validated['admin_primary_color'] ?? '#206bc4',
+            'admin_secondary_color' => $validated['admin_secondary_color'] ?? '#6c7a91',
+            'admin_heading_color' => $validated['admin_heading_color'] ?? '#182433',
+            'admin_text_color' => $validated['admin_text_color'] ?? '#182433',
+            'admin_link_color' => $validated['admin_link_color'] ?? '#206bc4',
+            'admin_link_hover_color' => $validated['admin_link_hover_color'] ?? '#1a569d',
+            'admin_language' => $validated['admin_language'] ?? 'default',
+            'admin_language_direction' => $validated['admin_language_direction'] ?? 'ltr',
+            'admin_rich_editor' => $validated['admin_rich_editor'] ?? 'ckeditor',
+            'admin_enable_page_visual_builder' => $request->boolean('admin_enable_page_visual_builder') ? '1' : '0',
+            'admin_layout' => $validated['admin_layout'] ?? 'vertical',
+            'admin_container_width' => $validated['admin_container_width'] ?? 'default',
+            'admin_show_menu_item_icon' => $request->boolean('admin_show_menu_item_icon') ? '1' : '0',
+            'admin_show_admin_bar' => $request->boolean('admin_show_admin_bar') ? '1' : '0',
+            'admin_show_guidelines' => $request->boolean('admin_show_guidelines') ? '1' : '0',
+            'admin_show_get_started_wizard' => $request->boolean('admin_show_get_started_wizard') ? '1' : '0',
+            'admin_custom_css' => $validated['admin_custom_css'] ?? null,
+            'admin_header_js' => $validated['admin_header_js'] ?? null,
+            'admin_body_js' => $validated['admin_body_js'] ?? null,
+            'admin_footer_js' => $validated['admin_footer_js'] ?? null,
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.admin-appearance');
+    }
+
+    public function updateApi(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'api_enabled' => $request->boolean('api_enabled') ? '1' : '0',
+            'api_key' => $validated['api_key'] ?? null,
+            'api_push_notifications_enabled' => $request->boolean('api_push_notifications_enabled') ? '1' : '0',
+            'api_fcm_project_id' => $validated['api_fcm_project_id'] ?? null,
+            'api_fcm_service_account_json' => $validated['api_fcm_service_account_json'] ?? null,
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.api');
+    }
+
+    public function updateCache(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'cache_admin_menu' => $request->boolean('cache_admin_menu') ? '1' : '0',
+            'cache_front_menu' => $request->boolean('cache_front_menu') ? '1' : '0',
+            'cache_user_avatar' => $request->boolean('cache_user_avatar') ? '1' : '0',
+            'cache_shortcodes' => $request->boolean('cache_shortcodes') ? '1' : '0',
+            'cache_shortcodes_duration' => $validated['cache_shortcodes_duration'] ?? '1800',
+            'cache_widgets' => $request->boolean('cache_widgets') ? '1' : '0',
+            'cache_widgets_duration' => $validated['cache_widgets_duration'] ?? '1800',
+            'cache_installed_plugins' => $request->boolean('cache_installed_plugins') ? '1' : '0',
+            'cache_size_warning_threshold' => $validated['cache_size_warning_threshold'] ?? '50',
+            'cache_auto_clear_when_size_exceeds_threshold' => $request->boolean('cache_auto_clear_when_size_exceeds_threshold') ? '1' : '0',
+            'cache_sitemap' => $request->boolean('cache_sitemap') ? '1' : '0',
+            'cache_sitemap_timeout' => $validated['cache_sitemap_timeout'] ?? '60',
+            'cache_public_headers' => $request->boolean('cache_public_headers') ? '1' : '0',
+            'cache_public_duration' => $validated['cache_public_duration'] ?? '120',
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.cache');
+    }
+
+    public function updateDatatables(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'datatables_pagination_type' => $validated['datatables_pagination_type'] ?? 'default',
+            'datatables_show_column_visibility' => $request->boolean('datatables_show_column_visibility') ? '1' : '0',
+            'datatables_show_export_button' => $request->boolean('datatables_show_export_button') ? '1' : '0',
+            'datatables_enable_table_responsive' => $request->boolean('datatables_enable_table_responsive') ? '1' : '0',
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.datatables');
+    }
+
+    public function updateWebsiteTracking(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'website_tracking_type' => $validated['website_tracking_type'] ?? 'gtm',
+            'website_tracking_gtm_container_id' => $validated['website_tracking_gtm_container_id'] ?? null,
+            'website_tracking_gtm_debug_mode' => $request->boolean('website_tracking_gtm_debug_mode') ? '1' : '0',
+            'website_tracking_gtm_include_customer_data' => $request->boolean('website_tracking_gtm_include_customer_data') ? '1' : '0',
+            'website_tracking_ga_measurement_id' => $validated['website_tracking_ga_measurement_id'] ?? null,
+            'website_tracking_custom_header_script' => $validated['website_tracking_custom_header_script'] ?? null,
+            'website_tracking_custom_body_code' => $validated['website_tracking_custom_body_code'] ?? null,
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.website-tracking');
+    }
+
+    public function updateOptimize(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $this->settings->setMany([
+            'optimize_page_speed_enabled' => $request->boolean('optimize_page_speed_enabled') ? '1' : '0',
+            'optimize_collapse_whitespace' => $request->boolean('optimize_collapse_whitespace') ? '1' : '0',
+            'optimize_elide_attributes' => $request->boolean('optimize_elide_attributes') ? '1' : '0',
+            'optimize_inline_css' => $request->boolean('optimize_inline_css') ? '1' : '0',
+            'optimize_insert_dns_prefetch' => $request->boolean('optimize_insert_dns_prefetch') ? '1' : '0',
+            'optimize_remove_comments' => $request->boolean('optimize_remove_comments') ? '1' : '0',
+            'optimize_remove_quotes' => $request->boolean('optimize_remove_quotes') ? '1' : '0',
+            'optimize_defer_javascript' => $request->boolean('optimize_defer_javascript') ? '1' : '0',
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.optimize');
+    }
+
+    public function updateBlog(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'blog_schema_enabled' => $request->boolean('blog_schema_enabled') ? '1' : '0',
+            'blog_schema_type' => $validated['blog_schema_type'] ?? 'BlogPosting',
+            'blog_anchor_links_enabled' => $request->boolean('blog_anchor_links_enabled') ? '1' : '0',
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.blog');
+    }
+
+    public function updateMembers(UpdateSettingsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $this->settings->setMany([
+            'member_allow_login' => $request->boolean('member_allow_login') ? '1' : '0',
+            'member_allow_register' => $request->boolean('member_allow_register') ? '1' : '0',
+            'member_verify_email' => $request->boolean('member_verify_email') ? '1' : '0',
+            'member_verification_expiration' => (string) ($validated['member_verification_expiration'] ?? 60),
+            'member_post_approval' => $request->boolean('member_post_approval') ? '1' : '0',
+            'member_default_avatar' => $validated['member_default_avatar'] ?? null,
+            'member_default_avatar_url' => $validated['member_default_avatar_url'] ?? null,
+            'member_show_terms_policy_checkbox' => $request->boolean('member_show_terms_policy_checkbox') ? '1' : '0',
+        ]);
+
+        admin_flash()->success(__('Settings updated successfully.'));
+
+        return redirect()
+            ->route('admin.settings.members');
+    }
+
     /**
      * @return array<int, array{title: string, items: array<int, array{title: string, description: string, icon: string, url: string}>}>
      */
@@ -395,18 +674,18 @@ class SettingController extends Controller
                     ['title' => 'Media', 'description' => 'View and update your media settings', 'icon' => 'category', 'url' => route('admin.settings.media', [], false)],
                     ['title' => 'Permalink', 'description' => 'View and update your permalink settings', 'icon' => 'route', 'url' => route('admin.settings.permalink', [], false)],
                     ['title' => 'Languages', 'description' => 'View and update your website languages', 'icon' => 'globe', 'url' => route('admin.settings.languages.index', [], false)],
-                    ['title' => 'Admin appearance', 'description' => 'View and update logo, favicon, layout,...', 'icon' => 'settings', 'url' => '#'],
-                    ['title' => 'API Settings', 'description' => 'View and update your API settings', 'icon' => 'key', 'url' => '#'],
-                    ['title' => 'Cache', 'description' => 'Configure caching for optimized speed', 'icon' => 'reload', 'url' => route('admin.system.cache.index', [], false)],
-                    ['title' => 'Datatables', 'description' => 'Settings for datatables', 'icon' => 'database', 'url' => '#'],
-                    ['title' => 'Website Tracking', 'description' => 'Choose your preferred analytics and tracking method. Only one option can be active at a time.', 'icon' => 'globe', 'url' => '#'],
-                    ['title' => 'Optimize', 'description' => 'Minify HTML output, inline CSS, remove comments...', 'icon' => 'bolt', 'url' => '#'],
+                    ['title' => 'Admin appearance', 'description' => 'View and update logo, favicon, layout,...', 'icon' => 'settings', 'url' => route('admin.settings.admin-appearance', [], false)],
+                    ['title' => 'API Settings', 'description' => 'View and update your API settings', 'icon' => 'key', 'url' => route('admin.settings.api', [], false)],
+                    ['title' => 'Cache', 'description' => 'Configure caching for optimized speed', 'icon' => 'reload', 'url' => route('admin.settings.cache', [], false)],
+                    ['title' => 'Datatables', 'description' => 'Settings for datatables', 'icon' => 'database', 'url' => route('admin.settings.datatables', [], false)],
+                    ['title' => 'Website Tracking', 'description' => 'Choose your preferred analytics and tracking method. Only one option can be active at a time.', 'icon' => 'globe', 'url' => route('admin.settings.website-tracking', [], false)],
+                    ['title' => 'Optimize', 'description' => 'Minify HTML output, inline CSS, remove comments...', 'icon' => 'bolt', 'url' => route('admin.settings.optimize', [], false)],
                 ],
             ],
             [
                 'title' => 'Localization',
                 'items' => [
-                    ['title' => 'Locales', 'description' => 'View, download and import locales', 'icon' => 'globe', 'url' => route('admin.settings.languages.index', [], false)],
+                    ['title' => 'Locales', 'description' => 'View, download and import locales', 'icon' => 'globe', 'url' => route('admin.translations.locales.index', [], false)],
                     ['title' => 'Theme Translations', 'description' => 'Manage the theme translations', 'icon' => 'globe', 'url' => '#'],
                     ['title' => 'Other Translations', 'description' => 'Manage the other translations (admin, plugins, packages...)', 'icon' => 'request-log', 'url' => '#'],
                 ],
@@ -416,11 +695,11 @@ class SettingController extends Controller
                 'items' => [
                     ['title' => 'FOB Comment', 'description' => 'Configure settings for FOB Comment', 'icon' => 'request-log', 'url' => '#'],
                     ['title' => 'Social Login', 'description' => 'View and update your social login settings', 'icon' => 'users', 'url' => '#'],
-                    ['title' => 'Blog', 'description' => 'View and update blog settings', 'icon' => 'post', 'url' => '#'],
+                    ['title' => 'Blog', 'description' => 'View and update blog settings', 'icon' => 'post', 'url' => route('admin.settings.blog', [], false)],
                     ['title' => 'Contact', 'description' => 'Settings for contact plugin', 'icon' => 'request-log', 'url' => '#'],
                     ['title' => 'Captcha', 'description' => 'View and update reCAPTCHA and Math CAPTCHA.', 'icon' => 'reload', 'url' => '#'],
                     ['title' => 'Google Analytics', 'description' => 'Config Credentials for Google Analytics', 'icon' => 'audit', 'url' => '#'],
-                    ['title' => 'Member', 'description' => 'View and update member settings', 'icon' => 'users', 'url' => '#'],
+                    ['title' => 'Member', 'description' => 'View and update member settings', 'icon' => 'users', 'url' => route('admin.settings.members', [], false)],
                 ],
             ],
         ];
@@ -656,6 +935,264 @@ class SettingController extends Controller
         }
 
         return $settings;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function adminAppearanceSettings(): array
+    {
+        return [
+            'admin_logo' => $this->settings->get('admin_logo'),
+            'admin_logo_url' => $this->settings->get('admin_logo_url'),
+            'admin_logo_height' => $this->settings->get('admin_logo_height', '32'),
+            'admin_favicon' => $this->settings->get('admin_favicon'),
+            'admin_favicon_url' => $this->settings->get('admin_favicon_url'),
+            'admin_favicon_type' => $this->settings->get('admin_favicon_type', 'ico'),
+            'admin_login_screen_backgrounds' => $this->jsonStringList('admin_login_screen_backgrounds'),
+            'admin_login_screen_background_urls' => $this->jsonStringList('admin_login_screen_background_urls'),
+            'admin_title' => $this->settings->get('admin_title', config('app.name', 'Sitewyn').' Admin'),
+            'admin_primary_font' => $this->settings->get('admin_primary_font', 'inter'),
+            'admin_primary_color' => $this->settings->get('admin_primary_color', '#206bc4'),
+            'admin_secondary_color' => $this->settings->get('admin_secondary_color', '#6c7a91'),
+            'admin_heading_color' => $this->settings->get('admin_heading_color', '#182433'),
+            'admin_text_color' => $this->settings->get('admin_text_color', '#182433'),
+            'admin_link_color' => $this->settings->get('admin_link_color', '#206bc4'),
+            'admin_link_hover_color' => $this->settings->get('admin_link_hover_color', '#1a569d'),
+            'admin_language' => $this->settings->get('admin_language', 'default'),
+            'admin_language_direction' => $this->settings->get('admin_language_direction', 'ltr'),
+            'admin_rich_editor' => $this->settings->get('admin_rich_editor', 'ckeditor'),
+            'admin_enable_page_visual_builder' => $this->settings->get('admin_enable_page_visual_builder', '1') === '1',
+            'admin_layout' => $this->settings->get('admin_layout', 'vertical'),
+            'admin_container_width' => $this->settings->get('admin_container_width', 'default'),
+            'admin_show_menu_item_icon' => $this->settings->get('admin_show_menu_item_icon', '1') === '1',
+            'admin_show_admin_bar' => $this->settings->get('admin_show_admin_bar', '1') === '1',
+            'admin_show_guidelines' => $this->settings->get('admin_show_guidelines', '0') === '1',
+            'admin_show_get_started_wizard' => $this->settings->get('admin_show_get_started_wizard', '1') === '1',
+            'admin_custom_css' => $this->settings->get('admin_custom_css'),
+            'admin_header_js' => $this->settings->get('admin_header_js'),
+            'admin_body_js' => $this->settings->get('admin_body_js'),
+            'admin_footer_js' => $this->settings->get('admin_footer_js'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function adminFaviconTypeOptions(): array
+    {
+        return [
+            'ico' => 'ICO',
+            'png' => 'PNG',
+            'svg' => 'SVG',
+            'gif' => 'GIF',
+            'jpeg' => 'JPEG',
+            'webp' => 'WebP',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function apiSettings(): array
+    {
+        return [
+            'api_enabled' => $this->settings->get('api_enabled', '0') === '1',
+            'api_key' => $this->settings->get('api_key'),
+            'api_push_notifications_enabled' => $this->settings->get('api_push_notifications_enabled', '0') === '1',
+            'api_fcm_project_id' => $this->settings->get('api_fcm_project_id'),
+            'api_fcm_service_account_json' => $this->settings->get('api_fcm_service_account_json'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cacheSettings(): array
+    {
+        return [
+            'cache_admin_menu' => $this->settings->get('cache_admin_menu', '1') === '1',
+            'cache_front_menu' => $this->settings->get('cache_front_menu', '1') === '1',
+            'cache_user_avatar' => $this->settings->get('cache_user_avatar', '1') === '1',
+            'cache_shortcodes' => $this->settings->get('cache_shortcodes', '1') === '1',
+            'cache_shortcodes_duration' => $this->settings->get('cache_shortcodes_duration', '1800'),
+            'cache_widgets' => $this->settings->get('cache_widgets', '1') === '1',
+            'cache_widgets_duration' => $this->settings->get('cache_widgets_duration', '1800'),
+            'cache_installed_plugins' => $this->settings->get('cache_installed_plugins', '1') === '1',
+            'cache_size_warning_threshold' => $this->settings->get('cache_size_warning_threshold', '50'),
+            'cache_auto_clear_when_size_exceeds_threshold' => $this->settings->get('cache_auto_clear_when_size_exceeds_threshold', '0') === '1',
+            'cache_sitemap' => $this->settings->get('cache_sitemap', '1') === '1',
+            'cache_sitemap_timeout' => $this->settings->get('cache_sitemap_timeout', '60'),
+            'cache_public_headers' => $this->settings->get('cache_public_headers', '1') === '1',
+            'cache_public_duration' => $this->settings->get('cache_public_duration', '120'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function datatablesSettings(): array
+    {
+        return [
+            'datatables_pagination_type' => $this->settings->get('datatables_pagination_type', 'default'),
+            'datatables_show_column_visibility' => $this->settings->get('datatables_show_column_visibility', '0') === '1',
+            'datatables_show_export_button' => $this->settings->get('datatables_show_export_button', '0') === '1',
+            'datatables_enable_table_responsive' => $this->settings->get('datatables_enable_table_responsive', '1') === '1',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function datatablesPaginationTypeOptions(): array
+    {
+        return [
+            'default' => 'Default',
+            'dropdown' => 'Dropdown',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function websiteTrackingSettings(): array
+    {
+        return [
+            'website_tracking_type' => $this->settings->get('website_tracking_type', 'gtm'),
+            'website_tracking_gtm_container_id' => $this->settings->get('website_tracking_gtm_container_id'),
+            'website_tracking_gtm_debug_mode' => $this->settings->get('website_tracking_gtm_debug_mode', '0') === '1',
+            'website_tracking_gtm_include_customer_data' => $this->settings->get('website_tracking_gtm_include_customer_data', '0') === '1',
+            'website_tracking_ga_measurement_id' => $this->settings->get('website_tracking_ga_measurement_id'),
+            'website_tracking_custom_header_script' => $this->settings->get('website_tracking_custom_header_script'),
+            'website_tracking_custom_body_code' => $this->settings->get('website_tracking_custom_body_code'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function websiteTrackingTypeOptions(): array
+    {
+        return [
+            'gtm' => 'Google Tag Manager (Recommended)',
+            'ga' => 'Google Analytics Only',
+            'custom' => 'Custom Tracking Code',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function optimizeSettings(): array
+    {
+        return [
+            'optimize_page_speed_enabled' => $this->settings->get('optimize_page_speed_enabled', '1') === '1',
+            'optimize_collapse_whitespace' => $this->settings->get('optimize_collapse_whitespace', '1') === '1',
+            'optimize_elide_attributes' => $this->settings->get('optimize_elide_attributes', '1') === '1',
+            'optimize_inline_css' => $this->settings->get('optimize_inline_css', '1') === '1',
+            'optimize_insert_dns_prefetch' => $this->settings->get('optimize_insert_dns_prefetch', '1') === '1',
+            'optimize_remove_comments' => $this->settings->get('optimize_remove_comments', '1') === '1',
+            'optimize_remove_quotes' => $this->settings->get('optimize_remove_quotes', '1') === '1',
+            'optimize_defer_javascript' => $this->settings->get('optimize_defer_javascript', '0') === '1',
+        ];
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, description: string}>
+     */
+    private function optimizeFilters(): array
+    {
+        return [
+            [
+                'key' => 'optimize_collapse_whitespace',
+                'label' => 'Collapse white space',
+                'description' => 'This filter reduces bytes transmitted in an HTML file by removing unnecessary whitespace.',
+            ],
+            [
+                'key' => 'optimize_elide_attributes',
+                'label' => 'Elide attributes',
+                'description' => 'This filter reduces the transfer size of HTML files by removing attributes from tags when the specified value is equal to the default value for that attribute. This can save a modest number of bytes, and may make the document more compressible by canonicalizing the affected tags.',
+            ],
+            [
+                'key' => 'optimize_inline_css',
+                'label' => 'Inline CSS',
+                'description' => 'This filter transforms the inline "style" attribute of tags into classes by moving the CSS to the header.',
+            ],
+            [
+                'key' => 'optimize_insert_dns_prefetch',
+                'label' => 'Insert DNS prefetch',
+                'description' => 'This filter injects tags in the HEAD to enable the browser to do DNS prefetching.',
+            ],
+            [
+                'key' => 'optimize_remove_comments',
+                'label' => 'Remove comments',
+                'description' => 'This filter eliminates HTML, JS and CSS comments. The filter reduces the transfer size of HTML files by removing the comments. Depending on the HTML file, this filter can significantly reduce the number of bytes transmitted on the network.',
+            ],
+            [
+                'key' => 'optimize_remove_quotes',
+                'label' => 'Remove quotes',
+                'description' => 'This filter eliminates unnecessary quotation marks from HTML attributes. While required by the various HTML specifications, browsers permit their omission when the value of an attribute is composed of a certain subset of characters (alphanumerics and some punctuation characters).',
+            ],
+            [
+                'key' => 'optimize_defer_javascript',
+                'label' => 'Defer javascript',
+                'description' => 'Defers the execution of javascript in the HTML. If necessary cancel deferring in some script, use data-pagespeed-no-defer as script attribute to cancel deferring.',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function blogSettings(): array
+    {
+        return [
+            'blog_schema_enabled' => $this->settings->get('blog_schema_enabled', '1') === '1',
+            'blog_schema_type' => $this->settings->get('blog_schema_type', 'BlogPosting'),
+            'blog_anchor_links_enabled' => $this->settings->get('blog_anchor_links_enabled', '0') === '1',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function blogSchemaTypeOptions(): array
+    {
+        return [
+            'Article' => 'Article',
+            'BlogPosting' => 'BlogPosting',
+            'NewsArticle' => 'NewsArticle',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function memberSettings(): array
+    {
+        return [
+            'member_allow_login' => $this->settings->get('member_allow_login', '1') === '1',
+            'member_allow_register' => $this->settings->get('member_allow_register', '1') === '1',
+            'member_verify_email' => $this->settings->get('member_verify_email', '0') === '1',
+            'member_verification_expiration' => $this->settings->get('member_verification_expiration', '60'),
+            'member_post_approval' => $this->settings->get('member_post_approval', '1') === '1',
+            'member_default_avatar' => $this->settings->get('member_default_avatar'),
+            'member_default_avatar_url' => $this->settings->get('member_default_avatar_url'),
+            'member_show_terms_policy_checkbox' => $this->settings->get('member_show_terms_policy_checkbox', '1') === '1',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function jsonStringList(string $key): array
+    {
+        $stored = $this->settings->get($key);
+        $decoded = is_string($stored) ? json_decode($stored, true) : null;
+
+        return is_array($decoded)
+            ? collect($decoded)->filter(fn (mixed $value): bool => is_string($value) && $value !== '')->values()->all()
+            : [];
     }
 
     /**

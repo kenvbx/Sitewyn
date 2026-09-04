@@ -1,25 +1,86 @@
+@php
+    $adminAppearanceSettings = app(\Sitewyn\Core\Base\Support\SettingStore::class);
+    $adminFontCatalog = app(\Sitewyn\Core\Base\Support\AdminFontCatalog::class);
+    $adminPanelTitle = $adminAppearanceSettings->get('admin_title', config('app.name', 'Sitewyn').' Admin');
+    $adminLogoUrl = $adminAppearanceSettings->get('admin_logo_url');
+    $adminLogoHeight = $adminAppearanceSettings->get('admin_logo_height', '32');
+    $adminFaviconUrl = $adminAppearanceSettings->get('admin_favicon_url') ?: asset('vendor/tabler/favicon-dev.ico');
+    $adminFaviconType = $adminAppearanceSettings->get('admin_favicon_type', 'ico');
+    $adminFaviconMimeType = [
+        'ico' => 'image/x-icon',
+        'png' => 'image/png',
+        'svg' => 'image/svg+xml',
+        'gif' => 'image/gif',
+        'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+    ][$adminFaviconType] ?? 'image/x-icon';
+    $adminPrimaryFont = $adminAppearanceSettings->get('admin_primary_font', 'inter');
+    $adminPrimaryColor = $adminAppearanceSettings->get('admin_primary_color', '#206bc4');
+    $adminSecondaryColor = $adminAppearanceSettings->get('admin_secondary_color', '#6c7a91');
+    $adminHeadingColor = $adminAppearanceSettings->get('admin_heading_color', '#182433');
+    $adminTextColor = $adminAppearanceSettings->get('admin_text_color', '#182433');
+    $adminLinkColor = $adminAppearanceSettings->get('admin_link_color', '#206bc4');
+    $adminLinkHoverColor = $adminAppearanceSettings->get('admin_link_hover_color', '#1a569d');
+    $adminLanguageDirection = $adminAppearanceSettings->get('admin_language_direction', 'ltr');
+    $adminContainerWidth = $adminAppearanceSettings->get('admin_container_width', 'default');
+    $adminShowMenuItemIcon = $adminAppearanceSettings->get('admin_show_menu_item_icon', '1') === '1';
+    $adminCustomCss = $adminAppearanceSettings->get('admin_custom_css');
+    $adminHeaderJs = $adminAppearanceSettings->get('admin_header_js');
+    $adminBodyJs = $adminAppearanceSettings->get('admin_body_js');
+    $adminFooterJs = $adminAppearanceSettings->get('admin_footer_js');
+    $adminFontFamily = $adminFontCatalog->family($adminPrimaryFont);
+    $adminFontStack = '"'.$adminFontFamily.'", Arial, sans-serif';
+    $adminGoogleFontUrl = $adminFontCatalog->stylesheetUrl($adminPrimaryFont);
+    $adminContainerClass = [
+        'default' => 'container-xl',
+        'large' => 'container-xxl',
+        'full' => 'container-fluid',
+    ][$adminContainerWidth] ?? 'container-xl';
+    $adminRenderedTitle = trim($__env->yieldContent('title'));
+    $adminTitleSuffix = config('app.name', 'Sitewyn').' Admin';
+    $adminDocumentTitle = $adminRenderedTitle !== ''
+        ? \Illuminate\Support\Str::replaceLast($adminTitleSuffix, $adminPanelTitle, $adminRenderedTitle)
+        : $adminPanelTitle;
+@endphp
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $adminLanguageDirection }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>@yield('title', config('app.name', 'Sitewyn') . ' Admin')</title>
-    <link rel="icon" href="{{ asset('vendor/tabler/favicon-dev.ico') }}" type="image/x-icon" />
+    <title>{{ $adminDocumentTitle }}</title>
+    <link rel="icon" href="{{ $adminFaviconUrl }}" type="{{ $adminFaviconMimeType }}" />
     <link href="{{ asset('vendor/tabler/dist/css/tabler.css') }}" rel="stylesheet" />
     <link href="{{ asset('vendor/tabler/dist/css/tabler-vendors.css') }}" rel="stylesheet" />
     <link href="{{ asset('vendor/tabler/dist/css/tabler-themes.css') }}" rel="stylesheet" />
     <link href="{{ asset('vendor/tabler/preview/css/demo.css') }}" rel="stylesheet" />
-    <style>
-      @import url('https://rsms.me/inter/inter.css');
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="{{ $adminGoogleFontUrl }}" rel="stylesheet">
     {{-- Admin chrome (header + global search) is kept inline on purpose: the
          admin panel loads Tabler straight from vendor/, and the Vite-built
          admin.css embeds Tabler again for the auth pages — linking it here
          would ship the whole framework twice. --}}
     <style>
       /* --- Header (dark slate, Botble-style) --- */
+      :root {
+        --tblr-primary: {{ $adminPrimaryColor }};
+        --tblr-secondary: {{ $adminSecondaryColor }};
+        --tblr-body-color: {{ $adminTextColor }};
+        --tblr-link-color: {{ $adminLinkColor }};
+        --tblr-link-hover-color: {{ $adminLinkHoverColor }};
+      }
+
+      body {
+        color: {{ $adminTextColor }};
+        font-family: {!! $adminFontStack !!};
+      }
+
+      h1, h2, h3, h4, h5, h6, .page-title, .card-title {
+        color: {{ $adminHeadingColor }};
+      }
+
       .sitewyn-admin-header {
         background-color: #1e293b;
         border-bottom: 1px solid rgba(255, 255, 255, .08);
@@ -38,7 +99,7 @@
         width: 36px;
         height: 36px;
         border-radius: 10px;
-        background-color: #2563eb;
+        background-color: {{ $adminPrimaryColor }};
         color: #fff;
         font-size: 1.1rem;
         font-weight: 700;
@@ -78,7 +139,7 @@
       }
 
       .sitewyn-admin-header .avatar {
-        background-color: #2563eb;
+        background-color: {{ $adminPrimaryColor }};
         color: #fff;
         font-weight: 600;
       }
@@ -310,10 +371,13 @@
         font-size: 10px;
         text-align: center;
       }
+      {!! $adminCustomCss !!}
     </style>
+    {!! $adminHeaderJs !!}
     @stack('styles')
   </head>
   <body>
+    {!! $adminBodyJs !!}
     @php
         $adminUser = auth('admin')->user();
         $adminName = $adminUser?->name ?: 'Administrator';
@@ -339,7 +403,11 @@
         <div class="container-fluid">
           <div class="navbar-brand navbar-brand-autodark">
             <a href="{{ route('admin.dashboard') }}" aria-label="{{ config('app.name', 'Sitewyn') }}">
-              <span class="navbar-brand-image fw-bold fs-2">{{ config('app.name', 'Sitewyn') }}</span>
+              @if ($adminLogoUrl)
+                <img src="{{ $adminLogoUrl }}" alt="{{ config('app.name', 'Sitewyn') }}" style="height: {{ (int) $adminLogoHeight }}px; width: auto;">
+              @else
+                <span class="navbar-brand-image fw-bold fs-2">{{ config('app.name', 'Sitewyn') }}</span>
+              @endif
             </a>
           </div>
           <nav class="collapse navbar-collapse" id="sidebar-menu" aria-label="Sidebar">
@@ -351,9 +419,11 @@
                 @endphp
                 <li class="nav-item {{ $children->isNotEmpty() ? 'dropdown' : '' }} {{ $item['active'] ? 'active' : '' }}">
                   <a class="nav-link {{ $children->isNotEmpty() ? 'dropdown-toggle' : '' }}" href="{{ $children->isNotEmpty() ? '#sidebar-' . $item['id'] : $href }}" @if ($children->isNotEmpty()) data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $item['active'] ? 'true' : 'false' }}" @endif>
-                    <span class="nav-link-icon d-md-none d-lg-inline-block">
-                      @include('core/base::admin.partials.icon', ['name' => $item['icon']])
-                    </span>
+                    @if ($adminShowMenuItemIcon)
+                      <span class="nav-link-icon d-md-none d-lg-inline-block">
+                        @include('core/base::admin.partials.icon', ['name' => $item['icon']])
+                      </span>
+                    @endif
                     <span class="nav-link-title">{{ $item['title'] }}</span>
                   </a>
                   @if ($children->isNotEmpty())
@@ -373,7 +443,7 @@
         </div>
       </aside>
       <header class="navbar navbar-expand-md navbar-dark d-print-none sitewyn-admin-header" data-bs-theme="dark">
-        <div class="container-xl">
+        <div class="{{ $adminContainerClass }}">
           {{-- Sidebar collapse: same #sidebar-menu target the vertical navbar
                used to carry, only reachable below lg (where the sidebar nav
                is collapsed) — behavior unchanged. --}}
@@ -381,7 +451,11 @@
             <span class="navbar-toggler-icon"></span>
           </button>
           <a href="{{ route('admin.dashboard') }}" class="navbar-brand d-flex align-items-center gap-2 p-0" aria-label="{{ config('app.name', 'Sitewyn') }} admin dashboard">
-            <span class="sitewyn-admin-brand" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(config('app.name', 'Sitewyn'), 0, 1)) }}</span>
+            @if ($adminLogoUrl)
+              <img src="{{ $adminLogoUrl }}" alt="{{ config('app.name', 'Sitewyn') }}" style="height: {{ (int) $adminLogoHeight }}px; width: auto;">
+            @else
+              <span class="sitewyn-admin-brand" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(config('app.name', 'Sitewyn'), 0, 1)) }}</span>
+            @endif
             <span class="sitewyn-admin-brand-name d-none d-sm-inline">{{ config('app.name', 'Sitewyn') }}</span>
           </a>
           <div class="navbar-nav flex-row align-items-center order-md-last ms-auto">
@@ -438,7 +512,7 @@
       </header>
       <div class="page-wrapper">
         <div class="page-header d-print-none">
-          <div class="container-xl">
+          <div class="{{ $adminContainerClass }}">
             @hasSection('breadcrumbs')
               <ol class="breadcrumb breadcrumb-arrows mb-2" aria-label="breadcrumbs">
                 @yield('breadcrumbs')
@@ -454,7 +528,7 @@
           </div>
         </div>
         <div class="page-body">
-          <div class="container-xl">
+          <div class="{{ $adminContainerClass }}">
             @yield('content')
           </div>
         </div>
@@ -828,5 +902,6 @@
       @endpush
     @endonce
     @stack('scripts')
+    {!! $adminFooterJs !!}
   </body>
 </html>

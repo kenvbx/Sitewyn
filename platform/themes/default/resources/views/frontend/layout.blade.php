@@ -15,8 +15,10 @@
   <title>@yield('title')</title>
   @stack('meta')
   @vite(['platform/themes/default/resources/css/theme.css'])
+  {!! site_tracking_head() !!}
 </head>
 <body>
+  {!! site_tracking_body() !!}
   @php
     // The default theme ships with the CMS, so reaching into the page and
     // blog modules here is an accepted coupling — custom themes may render
